@@ -1,0 +1,9 @@
+@extends('module.core::layouts.app')
+@section('title','Processing service types')
+@section('content')
+@include('module.processing::nav')
+<h1 class="mb-2 text-2xl font-semibold">Processing service types</h1><p class="mb-6 max-w-3xl text-sm leading-6 text-slate-500">Services describe the work a contractor performs. Standard services are available below. Add a type only when your business needs another service, then assign it to a vendor, publish a rate and include it in a processing route.</p><p class="mb-5 rounded-xl bg-emerald-50 p-4 text-sm">Dyeing and Combined Dan/Dyeing use meters for both fabric quantities and billing. Other services can use a suitable billing unit; piece or set counts need inspection evidence when they differ from the fabric unit.</p>
+<section class="mt-8 rounded-xl border border-line bg-white p-6"><h2 class="mb-4 font-semibold">Processing service types</h2><div class="mb-5 grid gap-3 text-sm md:grid-cols-3">@foreach($services as $s)<p class="rounded-lg bg-slate-50 p-3">{{ $s->name }} <span class="block text-xs text-slate-400">{{ $s->code }} · PKR / {{ $s->billingUnit->code }}</span></p>@endforeach</div>
+@if(auth()->user()->hasPermissionTo('processing.routes.manage'))<form method="POST" action="{{ route('processing.services.store') }}" class="grid gap-4 md:grid-cols-4">@csrf<label class="text-sm">Code<input required name="code" class="mt-1 block w-full rounded-lg border border-line p-2"></label><label class="text-sm">Name<input required name="name" class="mt-1 block w-full rounded-lg border border-line p-2"></label><label class="text-sm">Billing unit<select name="billing_unit_id" class="mt-1 block w-full rounded-lg border border-line p-2">@foreach($units as $u)<option value="{{ $u->id }}">{{ $u->code }} · {{ $u->name }}</option>@endforeach</select></label><button class="self-end rounded-lg border border-line px-4 py-2 text-sm">Add service type</button></form>@endif</section>
+
+@endsection

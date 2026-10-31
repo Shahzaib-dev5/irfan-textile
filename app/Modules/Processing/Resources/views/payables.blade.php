@@ -1,0 +1,8 @@
+@extends('module.core::layouts.app')
+@section('title','Contractor payable sources')
+@section('content')
+@include('module.processing::nav')
+<h2 class="mb-4 mt-8 text-lg font-semibold">Contractor payable source documents</h2><p class="mb-4 text-sm text-slate-500">These are original bill amounts. Use Accounting & finance for payments, allocations and the current outstanding balance.</p><div class="overflow-x-auto rounded-xl border border-line bg-white"><table class="w-full text-left text-sm"><thead class="bg-slate-50"><tr><th class="p-4">Bill</th><th class="p-4">Contractor</th><th class="p-4">Due on</th><th class="p-4">Original payable PKR</th></tr></thead><tbody>@forelse($sources as $s)<tr><td class="p-4"><a class="text-brand" href="{{ route('processing.show',$s->journalLine->document) }}">{{ $s->journalLine->document->number }}</a></td><td class="p-4">{{ $s->journalLine->party->legal_name }}</td><td class="p-4">{{ $s->due_on->format('d M Y') }}</td><td class="p-4">{{ $s->original_amount }}</td></tr>@empty<tr><td colspan="4" class="p-6 text-slate-500">No contractor bills posted.</td></tr>@endforelse</tbody></table></div><div class="mt-5">{{ $sources->links() }}</div>
+
+@if(auth()->user()->hasPermissionTo('accounting.finance.view'))<div class="mt-4 flex flex-wrap gap-3"><a class="rounded-lg border border-line bg-white px-4 py-2 text-sm text-brand" href="{{ route('finance.report',['report'=>'open','control'=>'party_payable']) }}">Current unpaid bills / allocations</a>@if(auth()->user()->hasPermissionTo('accounting.finance.post'))<a class="rounded-lg bg-brand px-4 py-2 text-sm text-white" href="{{ route('finance.create',['kind'=>'payment']) }}">Record actual payment</a>@endif</div>@endif
+@endsection

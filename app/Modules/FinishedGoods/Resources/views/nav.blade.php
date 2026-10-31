@@ -1,0 +1,1 @@
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm"><a href="{{ route('finished-goods.overview') }}" class="text-brand">Finished goods / Start here</a><span class="text-slate-500">Actual suits, explicit pack contents and traceable posted costs.</span></div>

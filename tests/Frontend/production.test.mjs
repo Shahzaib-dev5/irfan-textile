@@ -1,0 +1,8 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { productionForm } from '../../resources/js/production.js';
+test('saved production lines preserve quantities and stable keys',()=>{const f=productionForm({materials:[{quantity:'300'}],outputs:[{quantity:'50',cost_allocation_fraction:'1'}]});assert.equal(f.materials[0].quantity,'300');const key=f.outputs[0].rowId;f.add('outputs');f.remove('outputs',1);f.add('outputs');assert.equal(f.outputs[0].rowId,key);assert.notEqual(f.outputs[1].rowId,key);});
+test('removing an input clears its waste reference and reindexes later ones',()=>{const f=productionForm({materials:[{},{},{}],wastage:[{material_index:'0'},{material_index:'1'},{material_index:'2'}]});f.remove('materials',1);assert.deepEqual(f.wastage.map(r=>r.material_index),['0','','1']);});
+test('removing an output keeps cost references attached to the right output',()=>{const f=productionForm({outputs:[{},{},{}],costs:[{output_index:'1'},{output_index:'2'},{output_index:''}]});f.remove('outputs',1);assert.deepEqual(f.costs.map(r=>r.output_index),['','1','']);});
+test('at least one actual input and output remain and fractions are only a preview',()=>{const f=productionForm({materials:[{}],outputs:[{cost_allocation_fraction:'0.6'}]});f.remove('materials',0);f.remove('outputs',0);assert.equal(f.materials.length,1);f.outputs.push({cost_allocation_fraction:'0.4'});assert.equal(f.fractions(),'1.0000000000');});
+test('available quantity guidance uses the selected stock metadata',()=>{const f=productionForm({positions:[{id:7,available:'600.000000',unit:'M'}]});assert.equal(f.available({stock_position_id:'7'}),'Available: 600.000000 M');});

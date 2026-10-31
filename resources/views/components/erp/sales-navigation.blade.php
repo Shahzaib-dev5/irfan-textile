@@ -1,0 +1,6 @@
+@if(auth()->user()?->hasPermissionTo('sales.documents.view'))
+@php
+$inside=request()->is('sales','sales/*');
+@endphp
+<div class="mt-2 rounded-xl border border-line bg-slate-50/60" x-data="{open:@js($inside)}"><button type="button" @click="open=!open" :aria-expanded="open" aria-controls="sales-sidebar-links" class="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold"><span>Wholesale sales</span><span x-text="open?'-':'+'"></span></button><div id="sales-sidebar-links" x-show="open" @if(!$inside) x-cloak @endif class="space-y-1 px-2 pb-3"><a href="{{ route('sales.overview') }}" class="block rounded-lg px-3 py-2 text-sm text-brand">Overview / Start here</a>@foreach(['order'=>'Sales orders','dispatch'=>'Dispatch notes','invoice'=>'Sales invoices','return'=>'Physical returns','credit'=>'Credit notes'] as $key=>$label)<a href="{{ route('sales.index',['kind'=>$key]) }}" class="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-white">{{ $label }}</a>@endforeach<a href="{{ route('sales.availability') }}" class="block rounded-lg px-3 py-2 text-sm text-slate-600">Stock availability</a>@if(auth()->user()->hasPermissionTo('sales.customer.view'))<a href="{{ route('customer.index') }}" class="block rounded-lg px-3 py-2 text-sm text-slate-600">Customers & terms</a>@endif</div></div>
+@endif

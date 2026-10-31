@@ -1,0 +1,1 @@
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm"><a class="text-brand" href="{{ route('production.overview') }}">Production / Start here</a><span class="text-slate-500">Plan once, record actual consumption and output, follow batch progress.</span></div>

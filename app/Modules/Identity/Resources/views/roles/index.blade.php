@@ -1,0 +1,7 @@
+@extends('module.core::layouts.app')
+@section('title', 'Roles')
+@section('breadcrumb', 'Identity / Roles')
+@section('content')
+<div class="mb-6 flex items-end justify-between"><div><h1 class="text-2xl font-semibold">Authorization roles</h1><p class="mt-1 text-sm text-slate-500">These access roles are separate from supplier, vendor and customer party roles.</p></div>@can('create', App\Models\AccessRole::class)<a class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" href="{{ route('identity.roles.create') }}">Add role</a>@endcan</div>
+<div class="overflow-hidden rounded-xl border border-line bg-white"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-5 py-3">Role</th><th class="px-5 py-3">Permission count</th><th class="px-5 py-3">Users</th><th class="px-5 py-3">Status</th><th></th></tr></thead><tbody class="divide-y divide-line">@foreach($roles as $role)<tr><td class="px-5 py-4"><strong>{{ $role->name }}</strong><p class="text-xs text-slate-500">{{ $role->code }}</p></td><td class="px-5 py-4">{{ $role->permissions()->count() }}</td><td class="px-5 py-4">{{ $role->users_count }}</td><td class="px-5 py-4">{{ $role->is_active ? 'Active' : 'Inactive' }}</td><td class="px-5 py-4 text-right"><a class="font-medium text-brand" href="{{ route('identity.roles.edit', $role) }}">Edit permissions</a></td></tr>@endforeach</tbody></table></div><div class="mt-4">{{ $roles->links() }}</div>
+@endsection

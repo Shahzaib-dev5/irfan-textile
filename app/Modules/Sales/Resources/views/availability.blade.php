@@ -1,0 +1,6 @@
+@extends('module.core::layouts.app')
+@section('title','Sales stock availability')
+@section('content')
+@include('module.sales::nav')
+<h1 class="text-2xl font-semibold">Finished stock availability</h1><p class="mt-2 text-sm text-slate-500">Released, unexpired finished goods in active internal storage only. Available excludes all outstanding reservations. Your own order's reservation is fulfilled when you dispatch it.</p><div x-data="{q:''}" class="mt-5"><label class="text-sm">Filter item, lot or warehouse<input x-model="q" class="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2"></label><div class="mt-4 overflow-x-auto rounded-xl border border-line bg-white"><table class="w-full text-left text-sm"><thead class="bg-slate-50"><tr><th class="p-4">Item / lot / warehouse / location</th><th class="p-4">On hand</th><th class="p-4">Available</th></tr></thead><tbody>@forelse($positions as $p)<tr x-show="@js(strtolower($p['label'])).includes(q.toLowerCase())" class="border-t border-line"><td class="p-4">{{ $p['label'] }}</td><td class="p-4">{{ $p['on_hand'] }}</td><td class="p-4">{{ $p['available'] }}</td></tr>@empty<tr><td colspan="3" class="p-6 text-slate-500">No released finished goods. Ask the administrator to complete/inspect production or packing stock.</td></tr>@endforelse</tbody></table></div></div>
+@endsection
