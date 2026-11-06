@@ -1,5 +1,67 @@
 # Project state and phase completion reports
 
+## Searchable supplier bill receipt field (2026-11-05)
+
+Supplier bills now search GRNs by receipt number/supplier and immediately load
+the matching billable receipt lines. Multi-receipt bills remain supported. PHP
+8.4 Blade view compilation passed; no schema or route changes. Browser interaction
+and automated tests were not run.
+
+## Searchable goods receipt order field (2026-11-05)
+
+The receipt source field searches approved orders by order number and supplier
+name, and selecting a match immediately loads its supplier, warehouse and lines.
+Multi-order receiving and direct receipt remain available. PHP 8.4 Blade view
+compilation passed. No schema or route changes; browser interaction and automated
+tests were not run.
+
+## Direct receipt without a purchase order follow-up (2026-11-05)
+
+Goods receipts now support purchases made without an approved PO. The receiving
+screen captures supplier, warehouse, stocked item/unit, quantities, actual cost
+per base unit, lot/roll, location and a required reason stored in audit history.
+Posting reuses the existing GRN stock/GRNI path, so supplier bills still match
+the receipt and create the same single payable/open item. Returns continue to
+reference the original receipt line. The existing nullable PO-line reference
+was reused; no migration or new balance was added. PHP 8.4 syntax checks,
+Pint, Blade view compilation and Purchasing receipt route listing passed. The
+automated test suite was not run for this UX follow-up.
+Details: [PURCHASING_UX.md](PURCHASING_UX.md).
+
+## Direct module tabs follow-up (2026-11-03)
+
+Added permission-aware horizontal module tabs below the application header. Each
+tab opens its first operational list directly; the nested sidebars remain for
+workflow-specific screens. Removed the long “Overview / Start here” entries from
+module sidebars and redirected the old module-root overview URLs to their normal
+work lists, preserving those route names for existing links. Dashboard workspace
+cards now use the operational destinations. No schema changes. PHP 8.4 syntax,
+Blade compilation and dashboard rendering passed; relevant routes were listed.
+The top bar also shows a context-aware second row with only the selected
+module's permitted submodule tabs. These reuse existing routes and permissions.
+
+## Unified Party directory follow-up (2026-11-03)
+
+Party maintenance now has a shared `/parties` list and create/edit form for
+supplier, vendor and customer roles. One party identity can carry multiple roles;
+existing role-specific profile settings, service capabilities, credit controls,
+permissions and historical rate workflows remain on their established data model.
+The directory shows permitted roles together with search/status filters and
+edit/deactivate actions. Its Delete action deactivates every role atomically and
+retains transaction/audit history; it does not hard-delete a party. Existing
+Purchasing, Processing and Sales role URLs remain available for compatibility.
+No schema/migration or independent party balance was introduced. Verification
+is pending because the available PHP CLI is 8.2.12 while dependencies require
+PHP 8.3+; PHP syntax checks passed for the edited controller and request.
+
+## Physical Stock sidebar follow-up (2026-10-31)
+
+The Physical Suit Stock sidebar is now a permission-aware dropdown for its existing
+stock, processed-fabric and related action screens. No schema, posting or business
+data changed. Focused verification passed 8 tests / 57 assertions; Blade cache,
+Pint and diff checks passed. Browser review remains pending. Files, routes, limits
+and suggested commit: [PHYSICAL_SUIT_STOCK.md](PHYSICAL_SUIT_STOCK.md).
+
 ## Separate clean local database (2026-10-30)
 
 Created `irfan_textile_clean` with the existing 118-table schema, preserving exact
@@ -1065,8 +1127,9 @@ payments, settlements, full AP aging and posted purchasing reversals are not
 implemented. Physical returns on billed receipts leave AP intact pending a future
 credit; complex partially billed return reconciliation may reject further basic
 matching until that workflow exists. Cancelled bill references remain reserved.
-No PO-less receipt, over-receipt override, post-approval amendment, finished-goods
-purchasing or roll split/join is provided. Replacements require a new order.
+Direct PO-less receipts are now available as a documented follow-up. Over-receipt
+overrides, post-approval amendments, finished-goods purchasing and roll split/join
+remain unavailable. Replacements require a new order.
 
 ### 7. Updated documentation
 

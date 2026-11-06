@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 // Customer CRUD remains in Parties; no second customer identity master.
 Route::middleware(['auth', 'active.user', 'permission:sales.documents.view'])->prefix('sales')->name('sales.')->group(function () {
-    Route::get('/', [C::class, 'overview'])->name('overview');
+    Route::get('/', fn () => to_route('sales.index'))->name('overview');
     Route::get('/documents', [C::class, 'index'])->name('index');
     Route::get('/documents/create', [C::class, 'create'])->middleware('permission:sales.documents.manage')->name('create');
     Route::post('/documents', [C::class, 'store'])->middleware('permission:sales.documents.manage')->name('store');

@@ -238,7 +238,7 @@ Invariants: every line enters company-owned stock at the chosen warehouse; suppl
 
 Constraints/indexes: `UNIQUE(stock_movement_id)`; index `(purchase_order_line_id,document_id)`; `CHECK(received_quantity>0 AND accepted_quantity>0 AND rejected_quantity>=0 AND received_quantity=accepted_quantity+rejected_quantity)`; `CHECK(conversion_factor>0 AND accepted_base_quantity>0 AND provisional_unit_cost>=0 AND provisional_value>=0)`.
 
-Invariants: one receipt line is exactly one lot/optional roll/location position and one positive owned-stock movement. Split lines for multiple rolls/lots. Item and warehouse match the position; accepted base quantity matches movement; rejected goods not accepted into ownership have no stock/value entry. An entirely rejected delivery is recorded by inspection evidence rather than a zero-stock receipt. PO-less receipt requires an approved reason in document audit evidence. At posting the movement FK becomes nonnull and provisional value equals layer receipt valuation; line quantity cannot be invoiced twice.
+Invariants: one receipt line is exactly one lot/optional roll/location position and one positive owned-stock movement. Split lines for multiple rolls/lots. Item and warehouse match the position; accepted base quantity matches movement; rejected goods not accepted into ownership have no stock/value entry. An entirely rejected delivery is recorded by inspection evidence rather than a zero-stock receipt. PO-less receipts are supported with a required reason in document audit evidence and an actual unit cost captured at receipt. At posting the movement FK becomes nonnull and provisional value equals layer receipt valuation; line quantity cannot be invoiced twice.
 
 ### F23 `purchase_invoices`
 

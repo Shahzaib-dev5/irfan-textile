@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 // Supplier identity screens remain owned by the shared Parties module.
 Route::middleware(['auth', 'active.user'])->prefix('purchasing')->name('purchasing.')->group(function () {
-    Route::get('/', [PurchasingController::class, 'overview'])->middleware('permission:purchasing.documents.view')->name('overview');
+    Route::get('/', fn () => to_route('purchasing.orders.index'))->middleware('permission:purchasing.documents.view')->name('overview');
     foreach (PurchasingWorkspace::PAGES as $kind => $page) {
         Route::middleware('permission:purchasing.documents.view')->group(function () use ($kind, $page) {
             Route::get('/'.$page['path'], [PurchasingController::class, 'index'])->defaults('workspace_kind', $kind)->name($page['path'].'.index');

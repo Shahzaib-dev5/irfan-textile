@@ -4,7 +4,7 @@ use App\Modules\Catalog\Http\Controllers\MasterDataController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'active.user'])->prefix('catalog')->name('catalog.')->group(function (): void {
-    Route::get('/', [MasterDataController::class, 'overview'])->middleware('permission:catalog.masters.view')->name('overview');
+    Route::get('/', fn () => to_route('catalog.index', ['master' => 'items']))->middleware('permission:catalog.masters.view')->name('overview');
     Route::get('/items/{item}/conversions', [MasterDataController::class, 'conversions'])->whereNumber('item')->name('conversions.index');
     Route::get('/collections', [MasterDataController::class, 'collections'])->middleware('permission:catalog.masters.view')->name('collections');
     Route::post('/items/{item}/conversions', [MasterDataController::class, 'saveConversion'])->middleware('permission:catalog.masters.manage')->whereNumber('item')->name('conversions.store');

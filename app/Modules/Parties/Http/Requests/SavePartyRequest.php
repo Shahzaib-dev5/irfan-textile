@@ -10,7 +10,7 @@ class SavePartyRequest extends FormRequest
     public function authorize(): bool
     {
         $permission = $this->route('party') ? 'manage' : 'manage';
-        $role = $this->route('role');
+        $role = $this->input('role', $this->route('role'));
         $module = match ($role) {
             'supplier' => 'purchasing', 'vendor' => 'processing', 'customer' => 'sales', default => 'parties'
         };
@@ -22,7 +22,7 @@ class SavePartyRequest extends FormRequest
     {
         $party = $this->route('party');
         $ignoreId = $party?->id ?? $this->input('existing_party_id');
-        $role = $this->route('role');
+        $role = $this->input('role', $this->route('role'));
         $rules = [
             'existing_party_id' => ['nullable', 'integer', 'exists:parties,id'],
             'party.code' => ['required', 'string', 'max:40', Rule::unique('parties', 'code')->ignore($ignoreId)],

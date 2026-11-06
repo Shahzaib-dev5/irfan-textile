@@ -67,8 +67,9 @@ recording an entirely rejected delivery remain available on the order details.
 ### Goods receipts
 
 From the approved order choose **Receive goods against this order**, or open
-**Goods receipts > Receive purchased goods**, choose an approved order and
-**Load details**. Supplier/warehouse are inferred, order lines show remaining
+**Goods receipts > Receive purchased goods**, type a purchase order number or
+supplier name and select the matching approved order. Its context loads at once.
+Supplier/warehouse are inferred, order lines show remaining
 quantity in the original order unit, and locations are limited to that warehouse.
 Closed/fully accepted orders show an explanatory empty state.
 
@@ -79,6 +80,16 @@ stock enters the quantity/value ledger and GRNI. Pending quality is the default;
 release inspected stock in Inventory before picking/Processing. Rejected goods
 remain supplier-owned and do not consume accepted order capacity.
 
+If goods arrive from a purchase made without an order, choose **Receive without
+order**. Select the supplier and warehouse, then enter each item, compatible
+unit, accepted/rejected quantity, actual supplier cost per base unit, lot/roll
+and receiving location. A reason for bypassing the order is required and saved
+to the document audit history. Posting uses the same stock and GRNI entries as
+an order-backed receipt. Create the supplier bill from the posted GRN as usual;
+it must match the recorded receipt cost exactly. Returns and receipt statements
+continue to use the same GRN lines. Direct receipts do not create an order or
+order approval record.
+
 For example, an order for 100 M can receive 60 M now and 40 M on another GRN.
 Zero over-receipt tolerance remains. The server rechecks cumulative accepted
 quantities inside the transaction; draft-screen remaining quantities are guidance.
@@ -86,7 +97,8 @@ quantities inside the transaction; draft-screen remaining quantities are guidanc
 ### Supplier bills
 
 From a posted GRN choose **Create supplier bill**, or open **Supplier bills >
-New supplier bill**, choose a GRN and **Load details**. Supplier is inferred and
+New supplier bill**, type the GRN number or supplier name and select the match.
+Its supplier and billable receipt lines load immediately. Supplier is inferred and
 only positive unbilled, unreturned receipt capacity is offered. The original
 receipt cost is suggested and displayed per base unit. Bill quantities use the
 item base unit, even when the order used a converted purchasing unit.
@@ -248,3 +260,28 @@ acceptance limits. Stop after this authorized UX follow-up; no later module star
 - [x] No migrations, configuration permissions, credentials or future module added.
 - [x] Full regression, frontend, browser, build, format/cache and documentation checks.
 - [ ] MySQL 8.4 and live operator/accounting/print acceptance.
+
+## Direct purchase receipt without a PO follow-up (2026-11-05)
+
+The Goods receipts list now offers **Receive without order**. This creates a
+normal editable Goods Receipt draft whose lines have no purchase-order-line FK.
+Supplier, warehouse, stocked item, compatible unit, quantities, actual base-unit
+cost, lot/roll, receiving location and the reason are captured. The reason is
+appended as an immutable `purchase_direct_receipt_reason` audit event whenever
+the draft is saved. At posting, the existing inventory/GRNI journal and stock
+movement path are reused. Supplier bills still match accepted receipt quantities
+and exact recorded cost; returns still use the original receipt and position.
+
+Files: `PurchasingWorkspace`, `PurchasingService`, `PurchasingController`,
+`SavePurchaseRequest`, and the Purchasing form, list, source and detail views.
+Routes: existing `GET /purchasing/receipts/create?direct=1` and receipt store,
+show and update routes; no route or permission was added. Tables/migrations: no
+change; `goods_receipt_lines.purchase_order_line_id` was already nullable and the
+existing audit event table stores the required reason. No stock replay, party
+balance or payable cache was added.
+
+PHP 8.4 syntax lint, Pint, Blade view compilation and the six receipt routes
+passed. The automated test suite and browser flow were not run for this follow-up.
+Exact MySQL 8.4 and live operator acceptance remain pending. No variance handling
+is added: the bill must match the actual cost recorded on the direct receipt.
+Suggested commit: `feat: receive purchases without purchase orders`.

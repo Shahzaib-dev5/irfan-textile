@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AccessRole;
 use App\Models\BillOfMaterial;
 use App\Models\Document;
+use App\Models\Permission;
 use App\Models\StockLot;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -95,6 +96,41 @@ class PhysicalSuitStockTest extends TestCase
         $this->actingAs($user)->get(route('physical-stock.create'))->assertForbidden();
         $this->post(route('physical-stock.store'), $this->data())->assertForbidden();
         $this->assertSame(0, StockMovement::count());
+    }
+
+    public function test_sidebar_dropdown_shows_physical_stock_actions_and_current_page(): void
+    {
+        $response = $this->get(route('physical-stock.fabric'))->assertOk();
+        $response->assertSee('physical-stock-sidebar-links')
+            ->assertSee('open: true', false)
+            ->assertSee(route('physical-stock.index'))
+            ->assertSee(route('physical-stock.create'))
+            ->assertSee(route('inventory.documents.create', ['kind' => 'transfer']))
+            ->assertSee(route('inventory.documents.create', ['kind' => 'adjustment']))
+            ->assertSee(route('inventory.movements'))
+            ->assertSee(route('finished-goods.inventory'))
+            ->assertSee(route('sales.overview'));
+        $this->assertMatchesRegularExpression('/href="'.preg_quote(route('physical-stock.fabric'), '/').'"\s+aria-current="page"/', $response->getContent());
+    }
+
+    public function test_sidebar_respects_view_only_and_no_inventory_permissions(): void
+    {
+        $viewer = User::factory()->create();
+        $role = AccessRole::create(['code' => 'stock-viewer', 'name' => 'Stock viewer', 'is_active' => true]);
+        $role->permissions()->attach(Permission::where('code', 'inventory.view')->value('id'));
+        $viewer->accessRoles()->attach($role->id, ['assigned_by' => $this->admin->id]);
+
+        $this->actingAs($viewer)->get(route('physical-stock.index'))->assertOk()
+            ->assertSee('physical-stock-sidebar-links')
+            ->assertSee(route('physical-stock.fabric'))
+            ->assertDontSee(route('physical-stock.create'))
+            ->assertDontSee(route('inventory.documents.create', ['kind' => 'transfer']))
+            ->assertDontSee(route('finished-goods.inventory'))
+            ->assertDontSee(route('sales.overview'));
+        $this->get(route('physical-stock.create'))->assertForbidden();
+
+        $this->actingAs(User::factory()->create())->get(route('dashboard'))->assertOk()
+            ->assertDontSee('physical-stock-sidebar-links');
     }
 
     public function test_http_confirmation_then_same_batch_under_another_key_is_rejected(): void

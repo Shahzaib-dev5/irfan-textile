@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 // Shared vendor identity and historical rate routes remain in Parties.
 Route::middleware(['auth', 'active.user', 'permission:processing.documents.view'])->prefix('processing')->name('processing.')->group(function () {
-    Route::get('/', [C::class, 'overview'])->name('overview');
+    Route::get('/', fn () => to_route('processing.jobs.index'))->name('overview');
     Route::get('/fabric-out', [F::class, 'form'])->defaults('flow_kind', 'out')->middleware('permission:processing.documents.manage')->name('fabric.out');
     Route::get('/fabric-in', [F::class, 'form'])->defaults('flow_kind', 'in')->middleware('permission:processing.documents.manage')->name('fabric.in');
     Route::get('/fabric-drafts/{flow}', [F::class, 'form'])->middleware('permission:processing.documents.manage')->name('fabric.draft');

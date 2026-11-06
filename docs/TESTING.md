@@ -1,5 +1,28 @@
 # Testing and validation
 
+## Searchable supplier bill receipt field (2026-11-05)
+
+Automated tests were not run for this follow-up. PHP 8.4 Blade compilation and
+the focused diff check passed; browser interaction remains unverified.
+
+## Searchable goods receipt order field (2026-11-05)
+
+Automated tests were not run for this follow-up. Blade compilation and formatting
+checks were performed; browser interaction remains unverified.
+
+## Direct purchase receipt without a PO follow-up (2026-11-05)
+
+Automated tests were not run for this follow-up. PHP 8.4 syntax lint, Pint,
+Blade view compilation and Purchasing receipt route listing passed. The live
+browser flow and MySQL 8.4 acceptance remain outstanding.
+
+## Physical Stock sidebar — 2026-10-31
+
+`PhysicalSuitStockTest` passed 8 tests / 57 assertions on PHP 8.4.9 with the
+isolated `irfan_textile_phase3_test` database, including active submenu and
+permission-limited navigation. Blade cache compilation, Pint for the test file,
+and `git diff --check` passed. No interactive browser run was performed.
+
 ## Guided Finance UX — 2026-10-29
 
 - FinanceTest: **16 tests / 97 assertions passed**, PHP 8.3.35, isolated

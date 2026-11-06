@@ -1,12 +1,9 @@
 @props(['activeKind'=>null])
 @php
 $canWork=auth()->user()?->hasPermissionTo('processing.documents.view');
-$canVendors=auth()->user()?->hasPermissionTo('processing.vendor.view');
 $inside=request()->is('processing','processing/*');
 $activeKind=$inside?($activeKind??request()->route('workspace_kind')??request('kind')):null;
 $links=[];
-if($canWork)$links[]=['processing.overview','Overview / Start here',request()->routeIs('processing.overview')];
-if($canVendors)$links[]=['vendor.index','Vendors & rates',request()->routeIs('vendor.*')];
 if($canWork){
 if(auth()->user()?->hasPermissionTo('inventory.view'))$links[]=['physical-stock.fabric','Processed fabric inventory',request()->routeIs('physical-stock.fabric')];
 $links[]=['processing.services.index','Service types',request()->routeIs('processing.services.*')];
@@ -27,3 +24,4 @@ $links[]=['processing.reports','Reports',request()->routeIs('processing.reports'
 @foreach($links as [$target,$label,$active])<a href="{{ route($target) }}" @if($active) aria-current="page" @endif class="block rounded-lg px-3 py-2 text-sm {{ $active?'bg-emerald-100 font-semibold text-brand':'text-slate-600 hover:bg-white' }}">{{ $label }}</a>@endforeach
 </div></div>
 @endif
+

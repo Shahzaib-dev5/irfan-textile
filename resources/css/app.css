@@ -18,4 +18,55 @@
 html { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
 [x-cloak] { display: none !important; }
 
+html.catalog-list-screen main { padding-top: .75rem !important; padding-bottom: .75rem !important; }
+
+@media (min-width: 1024px) {
+    html.sidebar-collapsed aside { display: none !important; }
+}
+
+/* Theme overrides for the Tailwind utility colors used across ERP modules. */
+html.dark-mode {
+    color-scheme: dark;
+    --color-ink: #e5edf5;
+    --color-canvas: #0b1220;
+    --color-line: #334155;
+}
+
+.dark-mode body,
+.dark-mode main,
+.dark-mode footer { background-color: #0b1220; color: #e5edf5; }
+.dark-mode aside,
+.dark-mode header,
+.dark-mode .bg-white { background-color: #172233 !important; color: #e5edf5; }
+.dark-mode .bg-slate-50 { background-color: #111c2b !important; }
+.dark-mode .bg-slate-100 { background-color: #253247 !important; }
+.dark-mode .bg-slate-200 { background-color: #334155 !important; }
+.dark-mode .text-slate-400 { color: #9aabc0 !important; }
+.dark-mode .text-slate-500 { color: #adbdcf !important; }
+.dark-mode .text-slate-600 { color: #c8d4e2 !important; }
+.dark-mode .text-slate-700,
+.dark-mode .text-slate-800,
+.dark-mode .text-slate-900 { color: #e5edf5 !important; }
+.dark-mode .text-ink { color: #e5edf5 !important; }
+.dark-mode .border-line,
+.dark-mode .border-slate-100,
+.dark-mode .border-slate-200 { border-color: #334155 !important; }
+.dark-mode .bg-emerald-50 { background-color: #12372f !important; }
+.dark-mode .bg-emerald-100 { background-color: #17483c !important; }
+.dark-mode .text-emerald-700 { color: #6ee7b7 !important; }
+.dark-mode input:not([type=checkbox]):not([type=radio]),
+.dark-mode select,
+.dark-mode textarea { background-color: #111c2b; color: #e5edf5; border-color: #475569; }
+.dark-mode .finance .panel { background-color: #172233; color: #e5edf5; border-color: #334155; }
+.dark-mode .finance input:not([type=hidden]):not([type=radio]),
+.dark-mode .finance select,
+.dark-mode .finance textarea { background-color: #111c2b !important; color: #e5edf5 !important; border-color: #475569 !important; }
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder { color: #9aabc0; }
+.dark-mode option { background-color: #172233; color: #e5edf5; }
+.dark-mode table thead { background-color: #111c2b; }
+.dark-mode .hover\:bg-slate-50:hover { background-color: #253247 !important; }
+.dark-mode .hover\:bg-white:hover { background-color: #253247 !important; }
+.dark-mode .divide-line > :not(:last-child) { border-color: #334155 !important; }
+
 @media print { aside, header, footer, nav { display: none !important; } main { padding: 0 !important; } body { background: white !important; } }

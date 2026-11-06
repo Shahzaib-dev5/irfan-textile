@@ -50,6 +50,11 @@ introduced by this interface follow-up.
    notes, location, a new lot and each roll on its own line. Save and post the
    GRN. Accepted stock alone enters company ownership, inventory and GRNI.
    Pending/held stock remains subject to Inventory quality/picking controls.
+   For an unplanned purchase, use **Receive without order** on Goods receipts:
+   select the supplier and warehouse, capture item/unit/quantities, actual cost
+   per base unit, lot/roll and location, and provide the required reason. The
+   reason is recorded in document audit history. Posting creates the same stock
+   and GRNI effects. The later supplier bill must match this recorded cost.
 5. Receive partially across multiple GRNs. The posted accepted quantity plus the
    current document cannot exceed the approved order. **Tolerance is zero**;
    there is no override or hidden percentage. Rejected quantities do not consume
@@ -238,8 +243,8 @@ database is recreated. Exact final checks are in PROJECT_STATE.md.
 
 Local validation uses PHP 8.3.35, Laravel 13.38.0 and MariaDB 10.4.32. No MySQL
 8.4 or interactive-browser result is claimed. No new packages are required.
-Out of scope: PO-less receipts, tolerance overrides, order amendments after
-approval, finished-goods purchasing, tax/withholding, service/processing/expense
+Out of scope: tolerance overrides, order amendments after approval,
+finished-goods purchasing, tax/withholding, service/processing/expense
 bills, price variance/late-cost propagation, supplier credit notes, settlements,
 payments and full AP aging. Posted purchasing reversals remain unimplemented;
 posted documents are protected from generic Inventory reversal endpoints.

@@ -14,7 +14,7 @@ class PurchasingWorkspace
 {
     public const PAGES = [
         'order' => ['path' => 'orders', 'title' => 'Purchase orders', 'new' => 'New purchase order', 'help' => 'Agree what to buy from a shared supplier. Confirm the order, then receive its goods. Confirmation creates no stock or payable.'],
-        'receipt' => ['path' => 'receipts', 'title' => 'Goods receipts', 'new' => 'Receive purchased goods', 'help' => 'Record the fabric physically delivered against approved orders. Accepted stock enters your warehouse when the GRN is posted.'],
+        'receipt' => ['path' => 'receipts', 'title' => 'Goods receipts', 'new' => 'Receive purchased goods', 'help' => 'Receive goods against an approved order or record a purchase made without one. Accepted stock enters your warehouse when the GRN is posted.'],
         'return' => ['path' => 'returns', 'title' => 'Purchase returns', 'new' => 'Return goods to supplier', 'help' => 'Return available original receipt stock to its supplier. A physical return does not pay or reduce an existing supplier bill.'],
         'bill' => ['path' => 'bills', 'title' => 'Supplier bills', 'new' => 'New supplier bill', 'help' => 'Match the supplier invoice to accepted, unreturned, unbilled receipt quantities. Confirming records the payable; it does not receive stock or make a payment.'],
     ];
@@ -35,15 +35,19 @@ class PurchasingWorkspace
         abort_if(! $editing && in_array($kind, ['return', 'bill']) && ! empty($filter['receipt']) && ! $selectedReceipt, 404);
         $supplierId = (int) ($header?->supplier_party_role_id ?? $header?->payee_party_role_id ?? $selectedOrder?->supplier_party_role_id ?? $selectedReceipt?->supplier_party_role_id ?? old('supplier_party_role_id', $filter['supplier'] ?? 0));
         $warehouseId = (int) ($header?->warehouse_id ?? $header?->ship_to_warehouse_id ?? $selectedOrder?->ship_to_warehouse_id ?? ($kind === 'return' ? ($filter['warehouse'] ?? $selectedReceipt?->warehouse_id) : $selectedReceipt?->warehouse_id) ?? old('warehouse_id', $filter['warehouse'] ?? 0));
+        $directReceipt = $kind === 'receipt' && (request()->boolean('direct') || ($editing && $header->lines->isNotEmpty() && $header->lines->every(fn ($line) => $line->purchase_order_line_id === null)));
         $contextReady = $kind === 'order' || ($supplierId && ($kind === 'bill' || $warehouseId));
 
-        return compact('orders', 'receipts', 'selectedOrder', 'selectedReceipt', 'supplierId', 'warehouseId', 'contextReady');
+        return compact('orders', 'receipts', 'selectedOrder', 'selectedReceipt', 'supplierId', 'warehouseId', 'contextReady', 'directReceipt');
     }
 
     public function choices(string $kind, mixed $header, array $context, $orderLines, $receiptLines, $locations, PurchasingService $service): array
     {
-        ['supplierId' => $supplierId,'warehouseId' => $warehouseId,'selectedOrder' => $selectedOrder,'selectedReceipt' => $selectedReceipt,'contextReady' => $contextReady] = $context;
+        ['supplierId' => $supplierId,'warehouseId' => $warehouseId,'selectedOrder' => $selectedOrder,'selectedReceipt' => $selectedReceipt,'contextReady' => $contextReady,'directReceipt' => $directReceipt] = $context;
         if ($kind !== 'receipt') {
+            $orderLines = collect();
+        }
+        if ($directReceipt) {
             $orderLines = collect();
         }
         if (! in_array($kind, ['bill', 'return'])) {

@@ -11,7 +11,7 @@
         @if($master==='items')
         @include('module.catalog::masters.item-fields')
         @else
-        <section class="rounded-xl border border-line bg-white p-6"><h2 class="font-semibold">{{ $record->exists?'Definition details':'Enter the details' }}</h2><p class="mt-2 text-sm leading-6 text-slate-500">{{ App\Modules\Catalog\Services\CatalogWorkspace::SCREENS[$master]['help'] }}</p>
+        <section class="rounded-xl border border-line bg-white p-6"><h2 class="font-semibold">{{ $record->exists?'Definition details':'Enter the details' }}</h2>{{-- <p class="mt-2 text-sm leading-6 text-slate-500">{{ App\Modules\Catalog\Services\CatalogWorkspace::SCREENS[$master]['help'] }}</p> --}}
             @if($master==='units')<p class="mt-2 text-sm text-slate-500">Choose a stable code and measurement basis. Count units use zero decimal places; existing unit codes and measurement definitions are protected.</p>@endif
             @if($master==='variants')<p class="mt-2 text-sm text-slate-500">A finished SKU has one design/color configuration. Piece count describes the fabric components of one complete suit.</p>@endif
             <div class="mt-5 grid gap-5 sm:grid-cols-2">@foreach($fields as $name=>$field)<x-erp.master-field :name="$name" :field="$field" :value="$record->getAttribute($name)" :options="$choices[$name] ?? []" :read-only="$readOnly" :help="App\Modules\Catalog\Services\CatalogWorkspace::HELP[$name] ?? null" :locked="$master==='units' && $record->exists && in_array($name,['code','dimension','decimal_places'])" />@endforeach</div>

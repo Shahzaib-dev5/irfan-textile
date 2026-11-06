@@ -1,5 +1,24 @@
 # Physical suit stock follow-up — 2026-10-28
 
+## Sidebar navigation follow-up — 2026-10-31
+
+Physical Suit Stock now has a collapsible sidebar menu using the same navigation
+pattern as the other modules. It opens automatically on its own screens and links
+to suit stock, processed fabric, adding ready suits, warehouse transfers, count
+correction/damage, stock ledger, ready-stock inspection and Wholesale. Links are
+shown only with the same existing permissions as the corresponding page shortcuts;
+the routes and backend authorization remain unchanged. The original in-page
+shortcuts remain available. No migration, new table, posting rule or business-data
+change is involved. The feature test verifies the active route and restricted users.
+Focused PhysicalSuitStockTest passed 8 tests / 57 assertions on PHP 8.4.9 using
+the isolated test database; Blade cache compilation, Pint for the changed test,
+and `git diff --check` passed. Interactive browser testing was not performed.
+
+Changed: `app/Modules/Core/Resources/views/layouts/app.blade.php`,
+`resources/views/components/erp/physical-stock-navigation.blade.php`,
+`tests/Feature/PhysicalSuitStockTest.php` and this guide. No new routes or screens.
+Suggested commit: `feat(inventory): add physical stock sidebar navigation`.
+
 User-authorized simplification of daily Production/Finished Goods entry and
 Wholesale client history. Tax, payroll and statutory filing remain outside scope.
 

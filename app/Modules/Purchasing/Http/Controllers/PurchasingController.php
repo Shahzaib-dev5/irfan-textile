@@ -3,6 +3,7 @@
 namespace App\Modules\Purchasing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditEvent;
 use App\Models\Document;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptLine;
@@ -77,6 +78,7 @@ class PurchasingController extends Controller
         $page = PurchasingWorkspace::PAGES[$kind];
         $header = $document->exists ? $service->header($document) : null;
         $context = $workspace->context($request, $kind, $header, $document->exists);
+        $directReceiptReason = $document->exists && $kind === 'receipt' ? AuditEvent::where('document_id', $document->id)->where('action', 'purchase_direct_receipt_reason')->latest('id')->value('after_json->reason') : null;
         if ($document->exists && $service->workflow($document) === 'submitted') {
             abort(403, 'Return the submitted order to draft before editing.');
         }
@@ -91,7 +93,7 @@ class PurchasingController extends Controller
         $choices = $workspace->choices($kind, $header, $context, $orderLines, $receiptLines, $locations, $service);
         $positions = $choices['positions'];
 
-        return view('module.purchasing::form', $choices + $context + compact('document', 'header', 'kind', 'page', 'suppliers', 'warehouses', 'items', 'units', 'terms'));
+        return view('module.purchasing::form', $choices + $context + compact('document', 'header', 'kind', 'page', 'suppliers', 'warehouses', 'items', 'units', 'terms', 'directReceiptReason'));
     }
 
     public function save(SavePurchaseRequest $request, PurchasingService $service, ?Document $document = null)

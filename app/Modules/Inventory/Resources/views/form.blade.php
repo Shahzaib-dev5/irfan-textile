@@ -1,7 +1,6 @@
 @extends('module.core::layouts.app')
 @section('title','Prepare inventory document')
 @section('content')
-@include('module.inventory::nav')
 @php
 $header=$document->exists ? ($document->adjustment ?? $document->transfer):null;
 $draftLines=[];

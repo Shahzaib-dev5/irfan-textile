@@ -232,8 +232,10 @@ closure of an unfulfilled balance is an event, not a mutation of fulfilled facts
 Accepted receipt tolerance is zero with no override. Returns do not reopen an
 order; a replacement requires a new approved order. Rejected goods never enter
 company-owned stock. All-rejected deliveries are inspection audit evidence.
-PO-less receipts are not enabled. Conversion snapshots retain eight-place schema
-precision and are checked for exact compatibility with master conversion factors.
+PO-less receipts were outside the original Phase 7 slice; a later authorized
+Purchasing UX follow-up now enables them with a required audited reason.
+Conversion snapshots retain eight-place schema precision and are checked for
+exact compatibility with master conversion factors.
 
 Accounting uses Inventory/GRNI once at receipt, GRNI/AP once at exact-cost bill
 matching and one party open item per control journal line. Physical returns on a

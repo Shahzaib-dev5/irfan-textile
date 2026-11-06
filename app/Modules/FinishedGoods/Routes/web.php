@@ -6,7 +6,7 @@ use App\Modules\FinishedGoods\Http\Controllers\FinishedGoodsController as C;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'active.user', 'permission:finished-goods.view'])->prefix('finished-goods')->name('finished-goods.')->group(function () {
-    Route::get('/', [C::class, 'overview'])->name('overview');
+    Route::get('/', fn () => to_route('finished-goods.index'))->name('overview');
     Route::get('/specifications', [C::class, 'specifications'])->name('specifications');
     Route::post('/specifications', [C::class, 'publish'])->middleware('permission:finished-goods.manage')->name('specifications.store');
     Route::get('/packing', [C::class, 'index'])->name('index');

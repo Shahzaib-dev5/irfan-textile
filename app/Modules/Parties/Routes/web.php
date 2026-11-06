@@ -4,6 +4,13 @@ use App\Modules\Parties\Http\Controllers\PartyManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'active.user'])->group(function (): void {
+    Route::get('/parties', [PartyManagementController::class, 'partyIndex'])->name('parties.index');
+    Route::get('/parties/create', [PartyManagementController::class, 'partyCreate'])->name('parties.create');
+    Route::post('/parties', [PartyManagementController::class, 'partyStore'])->name('parties.store');
+    Route::get('/parties/{party}/edit', [PartyManagementController::class, 'partyEdit'])->name('parties.edit');
+    Route::put('/parties/{party}', [PartyManagementController::class, 'partyUpdate'])->name('parties.update');
+    Route::delete('/parties/{party}', [PartyManagementController::class, 'partyDeactivate'])->name('parties.deactivate');
+
     foreach ([
         'purchasing/suppliers' => ['supplier', 'purchasing.supplier'],
         'processing/vendors' => ['vendor', 'processing.vendor'],

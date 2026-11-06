@@ -32,13 +32,13 @@ class PartyManagementService
         return DB::transaction(function () use ($roleCode, $data, $party, $actor): Party {
             Company::whereKey(1)->lockForUpdate()->first();
             $type = PartyRoleType::query()->where('code', $roleCode)->firstOrFail();
-            if ($party) {
+            if ($party && ! ($data['_preserve_party_identity'] ?? false)) {
                 $party = Party::query()->whereKey($party->getKey())->lockForUpdate()->firstOrFail();
                 $before = $party->only(['code', 'legal_name', 'trading_name', 'party_kind', 'ntn', 'sales_tax_registration', 'cnic', 'email', 'phone', 'notes', 'is_active']);
                 $party->fill($data['party']);
                 $party->save();
                 app(AuditLogger::class)->record('parties', $party->id, 'updated', $before, $party->fresh()->only(array_keys($before)));
-            } else {
+            } elseif (! $party) {
                 $party = Party::query()->create($data['party']);
                 app(AuditLogger::class)->record('parties', $party->id, 'created', null, $party->only(['code', 'legal_name', 'trading_name', 'party_kind', 'ntn', 'sales_tax_registration', 'cnic', 'email', 'phone', 'notes', 'is_active']));
             }
@@ -131,11 +131,13 @@ class PartyManagementService
             app(AuditLogger::class)->record('party_addresses', $address->id, $before ? 'updated' : 'created', $before, $address->only(['label', 'address_type', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code', 'country_code', 'is_active']));
             $kept[] = $address->id;
         }
-        PartyAddress::query()->where('party_id', $party->id)->where('is_active', true)->whereNotIn('id', $kept ?: [0])->get()->each(function (PartyAddress $address): void {
-            $before = $address->only(['label', 'address_type', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code', 'country_code', 'is_active']);
-            $address->update(['is_active' => false]);
-            app(AuditLogger::class)->record('party_addresses', $address->id, 'deactivated', $before, $address->only(['label', 'address_type', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code', 'country_code', 'is_active']));
-        });
+        if ($rows !== []) {
+            PartyAddress::query()->where('party_id', $party->id)->where('is_active', true)->whereNotIn('id', $kept ?: [0])->get()->each(function (PartyAddress $address): void {
+                $before = $address->only(['label', 'address_type', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code', 'country_code', 'is_active']);
+                $address->update(['is_active' => false]);
+                app(AuditLogger::class)->record('party_addresses', $address->id, 'deactivated', $before, $address->only(['label', 'address_type', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code', 'country_code', 'is_active']));
+            });
+        }
     }
 
     /** @param list<int> $serviceIds @param array<int,int|null> $leadTimes */

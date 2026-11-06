@@ -158,7 +158,7 @@ class PurchasingService
     {
         return $this->transaction($actor, 'purchasing.documents.manage', function () use ($actor, $input, $id) {
             $data = validator($input, [
-                'kind' => 'required|in:order,receipt,return,bill', 'document_date' => 'required|date_format:Y-m-d', 'idempotency_key' => 'required|uuid', 'lock_version' => 'sometimes|integer|min:0',
+                'kind' => 'required|in:order,receipt,return,bill', 'direct_receipt' => 'sometimes|boolean', 'direct_receipt_reason' => 'required_if:direct_receipt,1|nullable|string|min:5|max:500', 'document_date' => 'required|date_format:Y-m-d', 'idempotency_key' => 'required|uuid', 'lock_version' => 'sometimes|integer|min:0',
                 'supplier_party_role_id' => 'required|integer|exists:party_roles,id', 'warehouse_id' => 'required_unless:kind,bill|nullable|integer|exists:warehouses,id',
                 'payment_term_id' => 'nullable|integer|exists:payment_terms,id', 'expected_on' => 'nullable|date_format:Y-m-d', 'supplier_reference' => 'nullable|string|max:100', 'notes' => 'nullable|string|max:5000',
                 'supplier_challan_number' => 'nullable|string|max:100', 'supplier_challan_date' => 'nullable|date_format:Y-m-d', 'received_at' => 'nullable|date',
@@ -167,6 +167,9 @@ class PurchasingService
                 'due_on' => 'required_if:kind,bill|nullable|date_format:Y-m-d|after_or_equal:supplier_invoice_date', 'lines' => 'required|array|min:1|max:100', 'lines.*' => 'required|array',
                 'tax_amount' => 'prohibited', 'rounding_amount' => 'prohibited', 'gross_amount' => 'prohibited',
             ])->validate();
+            if (! empty($data['direct_receipt']) && $data['kind'] !== 'receipt') {
+                Guard::fail('The without-order option is only available for goods receipts.');
+            }
             $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
             if (! $id && ($existing = Document::where('idempotency_key', $data['idempotency_key'])->first())) {
                 if ($existing->type->module_code !== 'purchasing') {
@@ -214,6 +217,9 @@ class PurchasingService
                 'bill' => $this->prepareBill($doc, $data, $role),
             };
             $this->audit->record('documents', $doc->id, $id ? 'purchase_draft_updated' : 'purchase_draft_created', null, ['input_hash' => $hash, 'payload' => $this->payload($doc)], $actor, $doc->id);
+            if (! empty($data['direct_receipt'])) {
+                $this->audit->record('documents', $doc->id, 'purchase_direct_receipt_reason', null, ['reason' => $data['direct_receipt_reason']], $actor, $doc->id);
+            }
             if (! $id) {
                 $this->documents->event($doc, 'created', $actor, $doc->idempotency_key, null, 'draft');
             }
@@ -263,27 +269,35 @@ class PurchasingService
 
     private function prepareReceipt(Document $doc, array $data, PartyRole $role): void
     {
+        $direct = (bool) ($data['direct_receipt'] ?? false);
         GoodsReceipt::updateOrCreate(['document_id' => $doc->id], ['supplier_party_role_id' => $role->id, 'warehouse_id' => $data['warehouse_id'], 'supplier_challan_number' => $data['supplier_challan_number'] ?? null, 'supplier_challan_date' => $data['supplier_challan_date'] ?? null, 'received_at' => $data['received_at'] ?? now(), 'notes' => $data['notes'] ?? null]);
         $seen = [];
         $quantities = [];
         foreach ($data['lines'] as $i => $input) {
-            $line = validator($input, ['purchase_order_line_id' => 'required|integer|exists:purchase_order_lines,id', 'accepted_quantity' => 'required', 'rejected_quantity' => 'nullable', 'warehouse_location_id' => 'required|integer|exists:warehouse_locations,id', 'lot_number' => 'required|string|max:50', 'roll_number' => 'nullable|string|max:60', 'width_mm' => 'nullable|decimal:0,3|gt:0|max:999999999', 'quality_status' => 'required|in:pending,released,held,rejected', 'inspection_notes' => 'nullable|string|max:500', 'external_lot_reference' => 'nullable|string|max:100', 'external_roll_reference' => 'nullable|string|max:100'])->validate();
-            $po = $this->approvedLine($line['purchase_order_line_id'], $role->id, $data['warehouse_id']);
-            $item = $this->item($po->item_id);
-            if ($po->order->document->document_date->gt($doc->document_date)) {
+            $rules = ['purchase_order_line_id' => $direct ? 'prohibited' : 'required|integer|exists:purchase_order_lines,id', 'accepted_quantity' => 'required', 'rejected_quantity' => 'nullable', 'warehouse_location_id' => 'required|integer|exists:warehouse_locations,id', 'lot_number' => 'required|string|max:50', 'roll_number' => 'nullable|string|max:60', 'width_mm' => 'nullable|decimal:0,3|gt:0|max:999999999', 'quality_status' => 'required|in:pending,released,held,rejected', 'inspection_notes' => 'nullable|string|max:500', 'external_lot_reference' => 'nullable|string|max:100', 'external_roll_reference' => 'nullable|string|max:100'];
+            if ($direct) {
+                $rules += ['item_id' => 'required|integer|exists:items,id', 'unit_id' => 'required|integer|exists:units,id', 'unit_cost' => 'required|numeric|gt:0'];
+            }
+            $line = validator($input, $rules)->validate();
+            $po = $direct ? null : $this->approvedLine($line['purchase_order_line_id'], $role->id, $data['warehouse_id']);
+            $item = $this->item($direct ? (int) $line['item_id'] : $po->item_id);
+            if ($po && $po->order->document->document_date->gt($doc->document_date)) {
                 Guard::fail('Receipt cannot predate order approval date.');
             }
-            [$qty,$base,$factor] = $this->snapshot($item, $po->unit_id, (string) $line['accepted_quantity'], $po->conversion_factor);
+            $unitId = $direct ? (int) $line['unit_id'] : $po->unit_id;
+            [$qty,$base,$factor] = $this->snapshot($item, $unitId, (string) $line['accepted_quantity'], $po?->conversion_factor);
             $rejected = D::input($line['rejected_quantity'] ?? '0');
-            if (bccomp($rejected, bcadd($rejected, '0', Unit::findOrFail($po->unit_id)->decimal_places), 6)) {
+            if (bccomp($rejected, bcadd($rejected, '0', Unit::findOrFail($unitId)->decimal_places), 6)) {
                 Guard::fail('Rejected quantity exceeds unit precision.');
             }
             if (bccomp($rejected, '0', 6) > 0 && blank($line['inspection_notes'] ?? null)) {
                 Guard::fail('Explain rejected quantities in inspection notes.');
             }
-            $quantities[$po->id] = bcadd($quantities[$po->id] ?? '0', $base, 6);
-            if (bccomp(bcadd($this->accepted($po->id), $quantities[$po->id], 6), $po->base_quantity, 6) > 0) {
-                Guard::fail('Zero tolerance: accepted receipts cannot exceed the approved order.');
+            if ($po) {
+                $quantities[$po->id] = bcadd($quantities[$po->id] ?? '0', $base, 6);
+                if (bccomp(bcadd($this->accepted($po->id), $quantities[$po->id], 6), $po->base_quantity, 6) > 0) {
+                    Guard::fail('Zero tolerance: accepted receipts cannot exceed the approved order.');
+                }
             }
             $location = WarehouseLocation::findOrFail($line['warehouse_location_id']);
             if ($location->warehouse_id !== (int) $data['warehouse_id'] || ! in_array($location->location_type, ['internal', 'quarantine'], true)) {
@@ -311,10 +325,17 @@ class PurchasingService
             if (isset($seen[$position->id])) {
                 Guard::fail('Use one receipt line per lot/roll/location position.');
             } $seen[$position->id] = true;
-            $orderNet = bcsub(D::round(bcmul($po->quantity, $po->unit_price, 14)), $po->discount_amount, 4);
-            $cost = D::round(bcdiv($orderNet, $po->base_quantity, 16), 8);
+            if ($direct) {
+                $cost = D::input((string) $line['unit_cost'], 8);
+                if (bccomp($cost, '0', 8) <= 0) {
+                    Guard::fail('Enter the supplier cost per base unit for a direct receipt.');
+                }
+            } else {
+                $orderNet = bcsub(D::round(bcmul($po->quantity, $po->unit_price, 14)), $po->discount_amount, 4);
+                $cost = D::round(bcdiv($orderNet, $po->base_quantity, 16), 8);
+            }
             $value = $this->money(D::round(bcmul($base, $cost, 14)));
-            GoodsReceiptLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'purchase_order_line_id' => $po->id, 'item_id' => $item->id, 'stock_position_id' => $position->id, 'unit_id' => $po->unit_id, 'received_quantity' => bcadd($qty, $rejected, 6), 'accepted_quantity' => $qty, 'rejected_quantity' => $rejected, 'conversion_factor' => $factor, 'accepted_base_quantity' => $base, 'provisional_unit_cost' => $cost, 'provisional_value' => $value, 'inspection_notes' => $line['inspection_notes'] ?? null]);
+            GoodsReceiptLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'purchase_order_line_id' => $po?->id, 'item_id' => $item->id, 'stock_position_id' => $position->id, 'unit_id' => $unitId, 'received_quantity' => bcadd($qty, $rejected, 6), 'accepted_quantity' => $qty, 'rejected_quantity' => $rejected, 'conversion_factor' => $factor, 'accepted_base_quantity' => $base, 'provisional_unit_cost' => $cost, 'provisional_value' => $value, 'inspection_notes' => $line['inspection_notes'] ?? null]);
         }
     }
 
@@ -519,13 +540,20 @@ class PurchasingService
         $totals = [];
         $value = '0';
         foreach ($header->lines as $line) {
-            $po = $this->approvedLine($line->purchase_order_line_id, $header->supplier_party_role_id, $header->warehouse_id);
-            $totals[$po->id] = bcadd($totals[$po->id] ?? '0', $line->accepted_base_quantity, 6);
-            if (bccomp(bcadd($this->accepted($po->id), $totals[$po->id], 6), $po->base_quantity, 6) > 0) {
-                Guard::fail('Posting would over-receive the order. Zero tolerance applies.');
+            if ($line->purchase_order_line_id) {
+                $po = $this->approvedLine($line->purchase_order_line_id, $header->supplier_party_role_id, $header->warehouse_id);
+                $totals[$po->id] = bcadd($totals[$po->id] ?? '0', $line->accepted_base_quantity, 6);
+                if (bccomp(bcadd($this->accepted($po->id), $totals[$po->id], 6), $po->base_quantity, 6) > 0 || $line->item_id !== $po->item_id) {
+                    Guard::fail('Posting would over-receive the order or the receipt item does not match it. Zero tolerance applies.');
+                }
+            } else {
+                $this->item($line->item_id);
+                if (bccomp($line->provisional_unit_cost, '0', 8) <= 0) {
+                    Guard::fail('Direct receipts require a positive actual supplier cost.');
+                }
             }
             $position = $this->stock->position($line->stock_position_id, $doc->document_date->format('Y-m-d'));
-            if ($position->lot->origin_document_id !== $doc->id || $position->lot->item_id !== $po->item_id || $position->movements()->exists() || $position->location->warehouse_id !== $header->warehouse_id) {
+            if ($position->lot->origin_document_id !== $doc->id || $position->lot->item_id !== $line->item_id || $position->movements()->exists() || $position->location->warehouse_id !== $header->warehouse_id) {
                 Guard::fail('Receipt lot/position is not an unused, matching source identity.');
             }
             $movement = $this->stock->movement($doc, $position->id, $line->accepted_base_quantity, 'purchase_receipt');

@@ -1,5 +1,20 @@
 # Guided Textile master data workspace
 
+## Catalog list layout refinement (2026-11-05)
+
+Master lists use a compact heading, one expandable search/filter panel, and a
+fixed-layout table with concise definitions. Item type chips were consolidated
+into the classification dropdown. Long item codes truncate visually while
+remaining available as a title. Pagination remains in place; the
+footer reports the current visible range and total, and pagination controls
+appear when more than one page exists. The Items list shows five records per page
+and allows vertical page scrolling so all content and pagination remain reachable;
+the table fits the available width without horizontal scrolling. Other master lists retain
+20 records per page. Catalog sub-tabs remain available in the top module bar and
+the Textile master data sidebar. The redundant in-page catalog breadcrumb
+was removed; the application breadcrumb and Setup guide action remain. No route,
+filter behavior, table data, permission or schema changed.
+
 ## Finished product measurement in Phase 10
 
 Choose Finished product, then SUIT for an individual design/color variant or PACK

@@ -66,7 +66,7 @@ class MasterDataController extends Controller
             $query->where('season', $filters['season']);
         }
 
-        return view('module.catalog::masters.index', ['master' => $master, 'label' => CatalogRegistry::LABELS[$master], 'records' => $query->orderBy($master === 'variants' ? 'configuration_code' : 'name')->orderBy('id')->paginate(20)->withQueryString(), 'categories' => ItemCategory::query()->orderBy('name')->get(), 'collections' => Design::query()->whereNotNull('season')->distinct()->orderBy('season')->pluck('season')]);
+        return view('module.catalog::masters.index', ['master' => $master, 'label' => CatalogRegistry::LABELS[$master], 'records' => $query->orderBy($master === 'variants' ? 'configuration_code' : 'name')->orderBy('id')->paginate($master === 'items' ? 5 : 20)->withQueryString(), 'categories' => ItemCategory::query()->orderBy('name')->get(), 'collections' => Design::query()->whereNotNull('season')->distinct()->orderBy('season')->pluck('season')]);
     }
 
     public function create(Request $request, string $master): View

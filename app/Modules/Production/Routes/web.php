@@ -5,7 +5,7 @@ use App\Modules\Production\Http\Controllers\ProductionController as C;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'active.user', 'permission:production.view'])->prefix('production')->name('production.')->group(function () {
-    Route::get('/', [C::class, 'overview'])->name('overview');
+    Route::get('/', fn () => to_route('production.batches.index'))->name('overview');
     Route::get('/progress', [C::class, 'progress'])->name('progress');
     Route::get('/boms', [C::class, 'boms'])->name('boms');
     Route::post('/boms', [C::class, 'saveBom'])->middleware('permission:production.manage')->name('boms.store');

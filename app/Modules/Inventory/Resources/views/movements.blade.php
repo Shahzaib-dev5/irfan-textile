@@ -1,7 +1,6 @@
 @extends('module.core::layouts.app')
 @section('title','Stock movement ledger')
 @section('content')
-@include('module.inventory::nav')
 <h1 class="mb-2 text-2xl font-semibold">Stock movement ledger</h1><p class="mb-6 text-sm text-slate-500">Permanent receipts and issues, including original postings and their compensating reversals.</p>
 <form class="mb-5 flex flex-wrap gap-3"><input aria-label="Position ID" class="rounded-lg border-line" name="position_id" type="number" min="1" value="{{ request('position_id') }}" placeholder="Position ID"><label class="text-sm">From <input class="rounded-lg border-line" name="from" type="date" value="{{ request('from') }}"></label><label class="text-sm">To <input class="rounded-lg border-line" name="to" type="date" value="{{ request('to') }}"></label><button class="rounded-lg border border-line px-4">Filter</button><button type="button" onclick="window.print()" class="rounded-lg border border-line px-4">Print report</button></form>
 <div class="overflow-x-auto rounded-xl border border-line bg-white"><table class="w-full whitespace-nowrap text-left text-sm"><thead class="border-b bg-slate-50"><tr>@foreach(['ID','Document / Date','Item / Lot / Roll','Location','Delta (base unit)','Reason','Reverses'] as $heading)<th class="p-4">{{ $heading }}</th>@endforeach</tr></thead><tbody>@forelse($movements as $movement)<tr class="border-b border-line"><td class="p-4">{{ $movement->id }}</td><td class="p-4">@php($sourceModule=$movement->document->type->module_code)

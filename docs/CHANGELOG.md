@@ -1,5 +1,33 @@
 # Changelog
 
+## Searchable goods receipt order field (2026-11-05)
+
+- Replaced the approved order dropdown with type-to-search by PO number or supplier.
+- Selecting a suggestion immediately loads that order's supplier, warehouse and receipt lines.
+- Kept multi-order receiving and the direct receipt path available.
+
+## Searchable supplier bill receipt field (2026-11-05)
+
+- Supplier bills now search GRNs by receipt number or supplier and load receipt lines immediately on selection.
+- Multi-receipt bill preparation remains available.
+
+## Direct purchase receipt without a PO (2026-11-05)
+
+- Added a Goods receipts path for purchases that arrived without an order.
+- Captures supplier, warehouse, item/unit, accepted/rejected quantity, actual
+  base-unit cost, lot/roll, location and an audited reason.
+- Reuses posted GRN stock/GRNI, exact-cost bill matching, payable and return
+  paths. No migration, duplicate stock or party balance was added.
+- See [PURCHASING_UX.md](PURCHASING_UX.md) for the workflow and limits.
+
+## Catalog list layout refinement (2026-11-05)
+
+- Consolidated list filters in an expandable panel and removed repeated item-type chips.
+- Tightened the list header and rows; added a visible result-range summary with existing pagination.
+- Items show five rows per page with vertical page scrolling so all data and pagination remain reachable; the table fits the available width.
+- Textile master navigation tabs remain available; only the repeated item-type chips inside the item list were consolidated into its filter dropdown.
+- No data, route, permission or schema changes. See [TEXTILE_MASTER_UX.md](TEXTILE_MASTER_UX.md).
+
 ## Guided Finance follow-up (2026-10-29)
 
 - Simplified payment/receipt/advance adjustment entry around the selected party role.
