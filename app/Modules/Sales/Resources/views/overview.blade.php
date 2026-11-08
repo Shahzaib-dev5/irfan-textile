@@ -1,7 +1,6 @@
 @extends('module.core::layouts.app')
 @section('title','Wholesale sales - Start here')
 @section('content')
-@include('module.sales::nav')
 <h1 class="text-3xl font-semibold">Wholesale sales</h1><p class="mt-3 max-w-3xl text-sm leading-6 text-slate-500">Choose your customer, confirm an order, dispatch actual finished stock, then bill that delivery. Confirm performs the transaction once. Save for later keeps unfinished work.</p>
 <section class="mt-6 rounded-xl bg-emerald-50 p-5 text-sm"><h2 class="font-semibold">Before you start</h2><p class="mt-2">The administrator must configure customer terms and credit limit, an open financial period and the sales posting accounts. Zero credit limit means no credit. Finished SUIT variants or PACK items must be received and released in internal warehouse stock.</p><p class="mt-2">Your Wholesale account works inside Sales. It does not grant access to Purchasing, Processing, production costs or company administration.</p></section>
 <div class="mt-6 grid gap-4 md:grid-cols-2">@foreach([

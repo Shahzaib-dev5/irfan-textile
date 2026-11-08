@@ -28,10 +28,10 @@ class SalesDocument
                 $reference = $line->description;
                 $money = $s->net($line);
             } elseif ($kind === 'dispatch') {
-                $item = $line->orderLine->item;
+                $item = $line->orderLine?->item ?? $line->directItem;
                 $qty = $line->base_quantity;
                 $unit = $item->baseUnit->code;
-                $reference = $line->orderLine->order->document->number.' / '.$line->position->lot->lot_number;
+                $reference = ($line->sales_order_line_id ? $line->orderLine->order->document->number : 'Direct dispatch').' / '.$line->position->lot->lot_number;
                 $money = $line->net_revenue_amount;
             } elseif ($kind === 'invoice') {
                 $item = $line->item;
@@ -40,7 +40,7 @@ class SalesDocument
                 $reference = $line->matches->map(fn ($m) => $m->dispatchLine->dispatch->document->number)->implode(', ');
                 $money = $line->net_amount;
             } elseif ($kind === 'return') {
-                $item = $line->dispatchLine->orderLine->item;
+                $item = $line->dispatchLine->orderLine?->item ?? $line->dispatchLine->directItem;
                 $qty = $line->base_quantity;
                 $unit = $item->baseUnit->code;
                 $reference = $line->dispatchLine->dispatch->document->number.' / '.$line->condition_code;

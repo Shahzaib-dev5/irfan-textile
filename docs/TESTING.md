@@ -1,5 +1,30 @@
 # Testing and validation
 
+## Sales list PDF/print actions (2026-11-06)
+
+Blade view compilation and `git diff --check` passed. Automated tests and
+browser printing were not run. No database migration was added or applied.
+
+## Finance labels and navigation follow-up (2026-11-06)
+
+PHP syntax checks, Pint, Blade view compilation, Vite production build and
+`git diff --check` passed.
+Automated tests and browser interaction were not run. No database migration was
+added or applied.
+
+## Direct wholesale dispatch follow-up (2026-11-06)
+
+Automated tests were not run. PHP 8.4 syntax checks and Pint passed for the
+edited PHP files; Laravel Blade view caching/clearing, Vite production build,
+focused Sales route listing and `git diff --check` passed. No application
+migration or test database reset was performed. Target MySQL 8.4 migration and
+browser workflow acceptance remain unverified.
+
+## Sales navigation deduplication (2026-11-06)
+
+No automated tests were run. Blade view compilation and the Sales-view diff
+check passed.
+
 ## Searchable supplier bill receipt field (2026-11-05)
 
 Automated tests were not run for this follow-up. PHP 8.4 Blade compilation and

@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\Receipt;
 use App\Models\SettlementAllocation;
 use App\Models\SettlementBatch;
+use App\Modules\Accounting\Support\FinanceVoucherLabel;
 use App\Modules\Core\Services\TransactionDocument;
 use App\Policies\FinancePolicy;
 
@@ -55,6 +56,6 @@ class FinanceDocument
             }
         }
 
-        return ['document' => $document, 'module' => 'accounting', 'kind' => 'finance', 'company' => Company::find(1), 'logo' => app(TransactionDocument::class)->logo(), 'title' => $document->type->name, 'meta' => $meta, 'columns' => $columns, 'rows' => $rows, 'total' => $total, 'notes' => ($document->journal?->description ?? $document->reason ?? 'Allocation / reconciliation evidence.').' | Journal debit total equals credit total. No payment is implied by an invoice alone.'];
+        return ['document' => $document, 'module' => 'accounting', 'kind' => 'finance', 'company' => Company::find(1), 'logo' => app(TransactionDocument::class)->logo(), 'title' => FinanceVoucherLabel::forCode($document->type->code, $document->type->name), 'meta' => $meta, 'columns' => $columns, 'rows' => $rows, 'total' => $total, 'notes' => ($document->journal?->description ?? $document->reason ?? 'Allocation / reconciliation evidence.').' | Journal debit total equals credit total. No payment is implied by an invoice alone.'];
     }
 }

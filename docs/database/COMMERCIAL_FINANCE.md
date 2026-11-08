@@ -158,7 +158,7 @@ Invariants: gross = bank amount + customer withholding. Post Dr bank, Dr recover
 
 ### F13 `payment_tax_lines`
 
-**Line → payments.** Additional columns: `tax_rate_id NN REFERENCES tax_rates(id)`; `tax_label VARCHAR(100) NN`; `rate_percent P NN`; `taxable_amount M NN`; `tax_amount M NN`; `ledger_account_id NN REFERENCES ledger_accounts(id)`; `certificate_reference VARCHAR(100) N`.
+**Line Ã¢â€ â€™ payments.** Additional columns: `tax_rate_id NN REFERENCES tax_rates(id)`; `tax_label VARCHAR(100) NN`; `rate_percent P NN`; `taxable_amount M NN`; `tax_amount M NN`; `ledger_account_id NN REFERENCES ledger_accounts(id)`; `certificate_reference VARCHAR(100) N`.
 
 Constraints/indexes: `UNIQUE(document_id,tax_rate_id)`; `CHECK(rate_percent>=0 AND rate_percent<=100)`; `CHECK(taxable_amount>0 AND tax_amount>0)`.
 
@@ -166,7 +166,7 @@ Invariants: rate and rounded amount snapshot the approved withholding basis. Sel
 
 ### F14 `receipt_tax_lines`
 
-**Line → receipts.** Additional columns: `tax_rate_id NN REFERENCES tax_rates(id)`; `tax_label VARCHAR(100) NN`; `rate_percent P NN`; `taxable_amount M NN`; `tax_amount M NN`; `ledger_account_id NN REFERENCES ledger_accounts(id)`; `certificate_reference VARCHAR(100) N`.
+**Line Ã¢â€ â€™ receipts.** Additional columns: `tax_rate_id NN REFERENCES tax_rates(id)`; `tax_label VARCHAR(100) NN`; `rate_percent P NN`; `taxable_amount M NN`; `tax_amount M NN`; `ledger_account_id NN REFERENCES ledger_accounts(id)`; `certificate_reference VARCHAR(100) N`.
 
 Constraints/indexes: `UNIQUE(document_id,tax_rate_id)`; `CHECK(rate_percent>=0 AND rate_percent<=100)`; `CHECK(taxable_amount>0 AND tax_amount>0)`.
 
@@ -200,7 +200,7 @@ Invariants: snapshots are reconciled reports, not a mutable cash ledger. Same-da
 
 ### F18 `bank_reconciliation_matches`
 
-**Line → bank_reconciliations.** Additional columns: `bank_statement_line_id NN REFERENCES bank_statement_lines(id)`; `journal_line_id NN REFERENCES journal_lines(id)`; `matched_amount M NN`; `reverses_match_id BIGINT UNSIGNED N REFERENCES bank_reconciliation_matches(id)`.
+**Line Ã¢â€ â€™ bank_reconciliations.** Additional columns: `bank_statement_line_id NN REFERENCES bank_statement_lines(id)`; `journal_line_id NN REFERENCES journal_lines(id)`; `matched_amount M NN`; `reverses_match_id BIGINT UNSIGNED N REFERENCES bank_reconciliation_matches(id)`.
 
 Constraints/indexes: `UNIQUE(reverses_match_id)`; index `(bank_statement_line_id,id)`; index `(journal_line_id,id)`; `CHECK(matched_amount>0)`; `CHECK(reverses_match_id IS NULL OR reverses_match_id<>id)`.
 
@@ -218,7 +218,7 @@ Invariants: approved/posted order is an immutable commercial commitment, with no
 
 ### F20 `purchase_order_lines`
 
-**Line → purchase_orders.** Additional columns: `item_id NN REFERENCES items(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `tax_rate_id BIGINT UNSIGNED N REFERENCES tax_rates(id)`; `expected_on DATE N`.
+**Line Ã¢â€ â€™ purchase_orders.** Additional columns: `item_id NN REFERENCES items(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `tax_rate_id BIGINT UNSIGNED N REFERENCES tax_rates(id)`; `expected_on DATE N`.
 
 Constraints/indexes: index `(item_id,document_id)`; `CHECK(quantity>0 AND base_quantity>0 AND conversion_factor>0 AND unit_price>=0 AND discount_amount>=0)`; discount cannot exceed rounded gross.
 
@@ -234,7 +234,7 @@ Invariants: every line enters company-owned stock at the chosen warehouse; suppl
 
 ### F22 `goods_receipt_lines`
 
-**Line → goods_receipts.** Additional columns: `purchase_order_line_id BIGINT UNSIGNED N REFERENCES purchase_order_lines(id)`; `item_id NN REFERENCES items(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `unit_id NN REFERENCES units(id)`; `received_quantity Q NN`; `accepted_quantity Q NN`; `rejected_quantity Q NN DEFAULT 0`; `conversion_factor R NN`; `accepted_base_quantity Q NN`; `provisional_unit_cost R NN`; `provisional_value M NN`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `inspection_notes VARCHAR(500) N`.
+**Line Ã¢â€ â€™ goods_receipts.** Additional columns: `purchase_order_line_id BIGINT UNSIGNED N REFERENCES purchase_order_lines(id)`; `item_id NN REFERENCES items(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `unit_id NN REFERENCES units(id)`; `received_quantity Q NN`; `accepted_quantity Q NN`; `rejected_quantity Q NN DEFAULT 0`; `conversion_factor R NN`; `accepted_base_quantity Q NN`; `provisional_unit_cost R NN`; `provisional_value M NN`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `inspection_notes VARCHAR(500) N`.
 
 Constraints/indexes: `UNIQUE(stock_movement_id)`; index `(purchase_order_line_id,document_id)`; `CHECK(received_quantity>0 AND accepted_quantity>0 AND rejected_quantity>=0 AND received_quantity=accepted_quantity+rejected_quantity)`; `CHECK(conversion_factor>0 AND accepted_base_quantity>0 AND provisional_unit_cost>=0 AND provisional_value>=0)`.
 
@@ -250,11 +250,11 @@ Invariants: role must be active supplier or vendor when drafted; supplier and ve
 
 ### F24 `purchase_invoice_lines`
 
-**Line → purchase_invoices.** Additional columns: `line_kind ENUM('stock','processing','expense') NN`; `item_id BIGINT UNSIGNED N REFERENCES items(id)`; `processing_job_step_id BIGINT UNSIGNED N REFERENCES processing_job_steps(id)`; `expense_account_id BIGINT UNSIGNED N REFERENCES ledger_accounts(id)`; `cost_centre_id BIGINT UNSIGNED N REFERENCES cost_centres(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`.
+**Line Ã¢â€ â€™ purchase_invoices.** Additional columns: `line_kind ENUM('stock','processing','expense') NN`; `item_id BIGINT UNSIGNED N REFERENCES items(id)`; `processing_job_step_id BIGINT UNSIGNED N REFERENCES processing_job_steps(id)`; `expense_account_id BIGINT UNSIGNED N REFERENCES ledger_accounts(id)`; `cost_centre_id BIGINT UNSIGNED N REFERENCES cost_centres(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`.
 
 Constraints/indexes: `CHECK(quantity>0 AND base_quantity>0 AND conversion_factor>0 AND unit_price>=0 AND discount_amount>=0 AND net_amount>=0 AND tax_amount>=0 AND gross_amount=net_amount+tax_amount)`; `CHECK((line_kind='stock' AND item_id IS NOT NULL AND processing_job_step_id IS NULL AND expense_account_id IS NULL) OR (line_kind='processing' AND item_id IS NULL AND processing_job_step_id IS NOT NULL AND expense_account_id IS NULL) OR (line_kind='expense' AND item_id IS NULL AND processing_job_step_id IS NULL AND expense_account_id IS NOT NULL))`.
 
-Invariants: net = rounded quantity × unit price minus discount; tax is child sum; line gross excludes header rounding. Stock quantities use item base unit; processing quantities use the step's snapshotted service unit, usually meters for dyeing; expense uses a configured service unit. Expense account cannot be inventory or party control. All stock/processing value must match receipt/acceptance before posting; prepayments use payments/open items rather than invented receipts.
+Invariants: net = rounded quantity Ãƒâ€” unit price minus discount; tax is child sum; line gross excludes header rounding. Stock quantities use item base unit; processing quantities use the step's snapshotted service unit, usually meters for dyeing; expense uses a configured service unit. Expense account cannot be inventory or party control. All stock/processing value must match receipt/acceptance before posting; prepayments use payments/open items rather than invented receipts.
 
 ### F25 `purchase_invoice_receipt_matches`
 
@@ -290,7 +290,7 @@ Invariants: this is the physical stock return. It does not itself reduce supplie
 
 ### F29 `purchase_return_lines`
 
-**Line → purchase_returns.** Additional columns: `goods_receipt_line_id NN REFERENCES goods_receipt_lines(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `base_quantity Q NN`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `reason VARCHAR(500) NN`.
+**Line Ã¢â€ â€™ purchase_returns.** Additional columns: `goods_receipt_line_id NN REFERENCES goods_receipt_lines(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `base_quantity Q NN`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `reason VARCHAR(500) NN`.
 
 Constraints/indexes: `UNIQUE(stock_movement_id)`; index `(goods_receipt_line_id,document_id)`; `CHECK(base_quantity>0)`.
 
@@ -306,7 +306,7 @@ Invariants: payee derived from original invoice. Duplicate credit reference chec
 
 ### F31 `purchase_credit_note_lines`
 
-**Line → purchase_credit_notes.** Additional columns: `purchase_invoice_line_id NN REFERENCES purchase_invoice_lines(id)`; `purchase_return_line_id BIGINT UNSIGNED N REFERENCES purchase_return_lines(id)`; `purchase_invoice_receipt_match_id BIGINT UNSIGNED N REFERENCES purchase_invoice_receipt_matches(id)`; `purchase_invoice_processing_match_id BIGINT UNSIGNED N REFERENCES purchase_invoice_processing_matches(id)`; `credited_quantity Q NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`; `description VARCHAR(255) NN`.
+**Line Ã¢â€ â€™ purchase_credit_notes.** Additional columns: `purchase_invoice_line_id NN REFERENCES purchase_invoice_lines(id)`; `purchase_return_line_id BIGINT UNSIGNED N REFERENCES purchase_return_lines(id)`; `purchase_invoice_receipt_match_id BIGINT UNSIGNED N REFERENCES purchase_invoice_receipt_matches(id)`; `purchase_invoice_processing_match_id BIGINT UNSIGNED N REFERENCES purchase_invoice_processing_matches(id)`; `credited_quantity Q NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`; `description VARCHAR(255) NN`.
 
 Constraints/indexes: `CHECK(credited_quantity>=0 AND net_amount>=0 AND tax_amount>=0 AND gross_amount=net_amount+tax_amount AND gross_amount>0)`; `CHECK(purchase_invoice_receipt_match_id IS NULL OR purchase_invoice_processing_match_id IS NULL)`.
 
@@ -332,7 +332,7 @@ Invariants: no stock or journal posting. Credit limit approval uses current post
 
 ### F34 `sales_order_lines`
 
-**Line → sales_orders.** Additional columns: `item_id NN REFERENCES items(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `tax_rate_id BIGINT UNSIGNED N REFERENCES tax_rates(id)`; `required_on DATE N`.
+**Line Ã¢â€ â€™ sales_orders.** Additional columns: `item_id NN REFERENCES items(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `tax_rate_id BIGINT UNSIGNED N REFERENCES tax_rates(id)`; `required_on DATE N`.
 
 Constraints/indexes: index `(item_id,document_id)`; `CHECK(quantity>0 AND base_quantity>0 AND conversion_factor>0 AND unit_price>=0 AND discount_amount>=0)`.
 
@@ -348,11 +348,11 @@ Invariants: accepted dispatch is the proposed ownership/control-transfer event. 
 
 ### F36 `sales_dispatch_lines`
 
-**Line → sales_dispatches.** Additional columns: `sales_order_line_id NN REFERENCES sales_order_lines(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `base_quantity Q NN`; `net_revenue_amount M NN`; `revenue_account_id NN REFERENCES ledger_accounts(id)`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `packing_package_id BIGINT UNSIGNED N REFERENCES packages(id)`; `description VARCHAR(255) NN`.
+**Line to sales_dispatches.** Additional columns: `sales_order_line_id BIGINT UNSIGNED N REFERENCES sales_order_lines(id)`; `direct_item_id BIGINT UNSIGNED N REFERENCES items(id)`; `direct_unit_price R N`; `direct_discount_amount M N`; `stock_position_id NN REFERENCES stock_positions(id)`; `base_quantity Q NN`; `net_revenue_amount M NN`; `revenue_account_id NN REFERENCES ledger_accounts(id)`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `packing_package_id BIGINT UNSIGNED N REFERENCES packages(id)`; `description VARCHAR(255) NN`.
 
 Constraints/indexes: `UNIQUE(stock_movement_id)`; index `(sales_order_line_id,document_id)`; index `(packing_package_id)`; `CHECK(base_quantity>0 AND net_revenue_amount>=0)`. Package, position and order item must agree under locked posting validation.
 
-Invariants: order customer/item match dispatch/position. Each line issues exactly one stock position; multiple rolls/lots or packs require split lines. Order dispatch caps exclude reversals and use order locks. Posted movement equals negative base quantity. Available stock/reservations are locked; no negative balances. Revenue is the deterministically rounded order-line net price allocated to shipped base quantity; dispatch freezes that amount and revenue account. Package provenance is supplied through the physical packing allocation model and must not duplicate a second mutable stock balance.
+Invariants: each line has exactly one source: an order line with all direct snapshots NULL, or a direct item with nonnegative price/discount snapshots. Order customer/item match dispatch/position; direct dispatch validates the selected active finished item and matching position. Each line issues exactly one stock position; multiple rolls/lots or packs require split lines. Order dispatch caps exclude reversals and use order locks. Posted movement equals negative base quantity. Available stock/reservations are locked; no negative balances. Revenue is the deterministically rounded order-line net or direct frozen price less discount; dispatch freezes that amount and revenue account. Package provenance is supplied through the physical packing allocation model and must not duplicate a second mutable stock balance.
 
 ### F37 `sales_invoices`
 
@@ -364,11 +364,11 @@ Invariants: posts Dr billed AR, Cr party-specific unbilled AR for matched dispat
 
 ### F38 `sales_invoice_lines`
 
-**Line → sales_invoices.** Additional columns: `sales_order_line_id NN REFERENCES sales_order_lines(id)`; `item_id NN REFERENCES items(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`; `cost_centre_id BIGINT UNSIGNED N REFERENCES cost_centres(id)`.
+**Line to sales_invoices.** Additional columns: `sales_order_line_id BIGINT UNSIGNED N REFERENCES sales_order_lines(id)`; `item_id NN REFERENCES items(id)`; `description VARCHAR(255) NN`; `unit_id NN REFERENCES units(id)`; `quantity Q NN`; `base_quantity Q NN`; `conversion_factor R NN`; `unit_price R NN`; `discount_amount M NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`; `cost_centre_id BIGINT UNSIGNED N REFERENCES cost_centres(id)`.
 
 Constraints/indexes: index `(item_id,document_id)`; `CHECK(quantity>0 AND base_quantity>0 AND conversion_factor>0 AND unit_price>=0 AND discount_amount>=0 AND net_amount>=0 AND tax_amount>=0 AND gross_amount=net_amount+tax_amount)`.
 
-Invariants: customer/item/order consistency; rounded quantity × price less discount = net. All dispatched matches use base unit; multiple dispatches can feed one invoice line. Customer price discounts and approved free goods are represented explicitly; a positive total invoice is required. Output tax children sum exactly to line tax. Revenue account and net recognition were frozen at dispatch; this invoice only reclassifies the unbilled balance.
+Invariants: customer/item consistency; order link is NULL only for a dispatch line that came from direct dispatch; rounded quantity times price less discount = net. All dispatched matches use base unit; multiple dispatches can feed one invoice line. Customer price discounts and approved free goods are represented explicitly; a positive total invoice is required. Output tax children sum exactly to line tax. Revenue account and net recognition were frozen at dispatch; this invoice only reclassifies the unbilled balance.
 
 ### F39 `sales_invoice_dispatch_matches`
 
@@ -396,7 +396,7 @@ Invariants: physical return debits inventory and credits COGS using the original
 
 ### F42 `sales_return_lines`
 
-**Line → sales_returns.** Additional columns: `sales_dispatch_line_id NN REFERENCES sales_dispatch_lines(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `base_quantity Q NN`; `condition_code ENUM('saleable','quarantine','damaged') NN`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `reason VARCHAR(500) NN`.
+**Line Ã¢â€ â€™ sales_returns.** Additional columns: `sales_dispatch_line_id NN REFERENCES sales_dispatch_lines(id)`; `stock_position_id NN REFERENCES stock_positions(id)`; `base_quantity Q NN`; `condition_code ENUM('saleable','quarantine','damaged') NN`; `stock_movement_id BIGINT UNSIGNED N REFERENCES stock_movements(id)`; `reason VARCHAR(500) NN`.
 
 Constraints/indexes: `UNIQUE(stock_movement_id)`; index `(sales_dispatch_line_id,document_id)`; `CHECK(base_quantity>0)`.
 
@@ -412,7 +412,7 @@ Invariants: customer derives from original invoice. Posts Dr revenue reduction a
 
 ### F44 `sales_credit_note_lines`
 
-**Line → sales_credit_notes.** Additional columns: `sales_invoice_line_id NN REFERENCES sales_invoice_lines(id)`; `sales_invoice_dispatch_match_id NN REFERENCES sales_invoice_dispatch_matches(id)`; `sales_return_line_id BIGINT UNSIGNED N REFERENCES sales_return_lines(id)`; `credited_base_quantity Q NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`; `description VARCHAR(255) NN`.
+**Line Ã¢â€ â€™ sales_credit_notes.** Additional columns: `sales_invoice_line_id NN REFERENCES sales_invoice_lines(id)`; `sales_invoice_dispatch_match_id NN REFERENCES sales_invoice_dispatch_matches(id)`; `sales_return_line_id BIGINT UNSIGNED N REFERENCES sales_return_lines(id)`; `credited_base_quantity Q NN DEFAULT 0`; `net_amount M NN`; `tax_amount M NN DEFAULT 0`; `gross_amount M NN`; `description VARCHAR(255) NN`.
 
 Constraints/indexes: `CHECK(credited_base_quantity>=0 AND net_amount>=0 AND tax_amount>=0 AND gross_amount=net_amount+tax_amount AND gross_amount>0)`.
 
@@ -438,7 +438,7 @@ Invariants: employee reimbursement of incidental company expenses, posts Dr appr
 
 ### F47 `expense_claim_lines`
 
-**Line → expense_claims.** Additional columns: `spent_on DATE NN`; `expense_account_id NN REFERENCES ledger_accounts(id)`; `cost_centre_id BIGINT UNSIGNED N REFERENCES cost_centres(id)`; `supplier_party_id BIGINT UNSIGNED N REFERENCES parties(id)`; `receipt_reference VARCHAR(100) N`; `description VARCHAR(500) NN`; `net_amount M NN`; `tax_rate_id BIGINT UNSIGNED N REFERENCES tax_rates(id)`; `tax_rate_percent P NN DEFAULT 0`; `tax_amount M NN DEFAULT 0`; `tax_account_id BIGINT UNSIGNED N REFERENCES ledger_accounts(id)`; `gross_amount M NN`.
+**Line Ã¢â€ â€™ expense_claims.** Additional columns: `spent_on DATE NN`; `expense_account_id NN REFERENCES ledger_accounts(id)`; `cost_centre_id BIGINT UNSIGNED N REFERENCES cost_centres(id)`; `supplier_party_id BIGINT UNSIGNED N REFERENCES parties(id)`; `receipt_reference VARCHAR(100) N`; `description VARCHAR(500) NN`; `net_amount M NN`; `tax_rate_id BIGINT UNSIGNED N REFERENCES tax_rates(id)`; `tax_rate_percent P NN DEFAULT 0`; `tax_amount M NN DEFAULT 0`; `tax_account_id BIGINT UNSIGNED N REFERENCES ledger_accounts(id)`; `gross_amount M NN`.
 
 Constraints/indexes: `CHECK(net_amount>=0 AND tax_amount>=0 AND gross_amount>0 AND gross_amount=net_amount+tax_amount)`; `CHECK(tax_rate_percent>=0 AND tax_rate_percent<=100)`; `CHECK((tax_rate_id IS NULL AND tax_amount=0 AND tax_rate_percent=0 AND tax_account_id IS NULL) OR (tax_rate_id IS NOT NULL AND tax_account_id IS NOT NULL))`.
 

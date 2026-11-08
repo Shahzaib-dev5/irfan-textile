@@ -23,6 +23,11 @@ class SalesDispatchLine extends InventoryDocumentPart
         return $this->belongsTo(SalesOrderLine::class, 'sales_order_line_id', 'id');
     }
 
+    public function directItem(): BelongsTo
+    {
+        return $this->belongsTo(Item::class, 'direct_item_id', 'id');
+    }
+
     public function position(): BelongsTo
     {
         return $this->belongsTo(StockPosition::class, 'stock_position_id', 'id');

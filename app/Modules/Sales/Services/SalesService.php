@@ -55,7 +55,7 @@ class SalesService
     public static function rules(): array
     {
         return [
-            'kind' => 'required|in:order,dispatch,invoice,return,credit', 'document_date' => 'required|date_format:Y-m-d', 'idempotency_key' => 'required|uuid',
+            'kind' => 'required|in:order,dispatch,invoice,return,credit', 'direct_dispatch' => 'sometimes|boolean', 'document_date' => 'required|date_format:Y-m-d', 'idempotency_key' => 'required|uuid',
             'customer_party_role_id' => 'required|integer|exists:customer_profiles,party_role_id', 'payment_term_id' => 'nullable|integer|exists:payment_terms,id',
             'warehouse_id' => 'required_if:kind,dispatch,return|nullable|integer|exists:warehouses,id', 'customer_reference' => 'nullable|string|max:100', 'required_on' => 'nullable|date_format:Y-m-d',
             'ship_to_address_id' => 'nullable|integer|exists:party_addresses,id', 'ship_to_snapshot' => 'nullable|string|max:3000', 'billing_address_snapshot' => 'nullable|string|max:3000',
@@ -63,9 +63,9 @@ class SalesService
             'due_on' => 'nullable|date_format:Y-m-d|after_or_equal:document_date', 'reason' => 'required_if:kind,return,credit|nullable|string|min:5|max:500',
             'sales_invoice_id' => 'required_if:kind,credit|nullable|integer|exists:sales_invoices,document_id', 'credit_kind' => 'required_if:kind,credit|nullable|in:physical_return,price_adjustment',
             'lines' => 'required|array|min:1|max:100', 'lines.*' => 'required|array',
-            'lines.*.item_id' => 'required_if:kind,order|nullable|integer|exists:items,id', 'lines.*.unit_id' => 'nullable|integer|exists:units,id', 'lines.*.quantity' => 'required_if:kind,order|nullable|decimal:0,6|gt:0',
-            'lines.*.unit_price' => 'required_if:kind,order|nullable|decimal:0,8|gte:0', 'lines.*.discount_amount' => 'nullable|decimal:0,4|gte:0', 'lines.*.description' => 'nullable|string|max:255',
-            'lines.*.sales_order_line_id' => 'required_if:kind,dispatch|nullable|integer|exists:sales_order_lines,id', 'lines.*.stock_position_id' => 'required_if:kind,dispatch|nullable|integer|exists:stock_positions,id',
+            'lines.*.item_id' => 'required_if:kind,order|required_if:direct_dispatch,1|nullable|integer|exists:items,id', 'lines.*.unit_id' => 'nullable|integer|exists:units,id', 'lines.*.quantity' => 'required_if:kind,order|nullable|decimal:0,6|gt:0',
+            'lines.*.unit_price' => 'required_if:kind,order|required_if:direct_dispatch,1|nullable|decimal:0,8|gte:0', 'lines.*.discount_amount' => 'nullable|decimal:0,4|gte:0', 'lines.*.description' => 'nullable|string|max:255',
+            'lines.*.sales_order_line_id' => 'required_if:kind,dispatch|exclude_if:direct_dispatch,1|nullable|integer|exists:sales_order_lines,id', 'lines.*.stock_position_id' => 'required_if:kind,dispatch|nullable|integer|exists:stock_positions,id',
             'lines.*.base_quantity' => 'required_if:kind,dispatch,invoice,return|nullable|decimal:0,6|gt:0', 'lines.*.sales_dispatch_line_id' => 'required_if:kind,invoice,return|nullable|integer|exists:sales_dispatch_lines,id',
             'lines.*.warehouse_location_id' => 'required_if:kind,return|nullable|integer|exists:warehouse_locations,id', 'lines.*.lot_number' => 'required_if:kind,return|nullable|string|max:50',
             'lines.*.condition_code' => 'nullable|in:saleable,quarantine,damaged', 'lines.*.sales_invoice_dispatch_match_id' => 'required_if:kind,credit|nullable|integer|exists:sales_invoice_dispatch_matches,id',
@@ -199,7 +199,7 @@ class SalesService
 
     private function dispatchLine(int $id, int $customer, string $date): SalesDispatchLine
     {
-        $line = SalesDispatchLine::with('dispatch.document', 'orderLine.item.baseUnit', 'position.lot')->lockForUpdate()->findOrFail($id);
+        $line = SalesDispatchLine::with('dispatch.document', 'orderLine.item.baseUnit', 'directItem.baseUnit', 'position.lot')->lockForUpdate()->findOrFail($id);
         if ($line->dispatch->customer_party_role_id !== $customer || $line->dispatch->document->status !== 'posted' || $line->dispatch->document->document_date->format('Y-m-d') > $date) {
             G::fail('Choose a confirmed dispatch for this customer and date.');
         }
@@ -207,10 +207,18 @@ class SalesService
         return $line;
     }
 
+    public function dispatchItemId(SalesDispatchLine $line): int
+    {
+        return (int) ($line->sales_order_line_id ? $line->orderLine->item_id : $line->direct_item_id);
+    }
+
     public function save(int $actor, array $input): Document
     {
         return $this->transaction($actor, 'sales.documents.manage', function () use ($actor, $input) {
             $data = validator($input, self::rules())->validate();
+            if (! empty($data['direct_dispatch']) && $data['kind'] !== 'dispatch') {
+                G::fail('Direct dispatch mode is only available for dispatch notes.');
+            }
             $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
             if ($existing = Document::where('idempotency_key', $data['idempotency_key'])->first()) {
                 $this->kind($existing);
@@ -268,8 +276,27 @@ class SalesService
                 case 'dispatch':
                     SalesDispatch::create($common + ['warehouse_id' => $data['warehouse_id'], 'dispatched_at' => $data['document_date'].' 12:00:00', 'carrier' => $data['carrier'] ?? null, 'tracking_reference' => $data['tracking_reference'] ?? null, 'ship_to_snapshot' => $address, 'notes' => $notes]);
                     foreach ($data['lines'] as $i => $row) {
-                        $order = $this->orderLine($row['sales_order_line_id'] ?? 0, $customer->id, $data['document_date']);
-                        SalesDispatchLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'sales_order_line_id' => $order->id, 'stock_position_id' => $row['stock_position_id'] ?? 0, 'base_quantity' => D::input($row['base_quantity'] ?? '0'), 'net_revenue_amount' => 0, 'revenue_account_id' => $this->account('sales_revenue'), 'description' => $order->description]);
+                        if (! empty($data['direct_dispatch'])) {
+                            $item = Item::with('baseUnit', 'variant')->findOrFail($row['item_id'] ?? 0);
+                            if (! $item->is_active || ! $item->is_stocked || $item->item_type !== 'finished' || ! $item->baseUnit->is_active || ! in_array($item->baseUnit->code, ['SUIT', 'PACK']) || ($item->baseUnit->code === 'SUIT' && (! $item->variant || ! $item->variant->is_active))) {
+                                G::fail('Direct dispatch requires an active finished SUIT variant or PACK SKU.');
+                            }
+                            $price = D::input($row['unit_price'] ?? '0', 8);
+                            $discount = D::input($row['discount_amount'] ?? '0', 4);
+                            $gross = D::round(bcmul(D::input($row['base_quantity'] ?? '0'), $price, 14));
+                            if (bccomp($discount, $gross, 4) > 0) {
+                                G::fail('Discount cannot exceed the direct dispatch line value.');
+                            }
+                            $orderLineId = null;
+                            $description = $row['description'] ?? $item->name;
+                            $direct = ['direct_item_id' => $item->id, 'direct_unit_price' => $price, 'direct_discount_amount' => $discount];
+                        } else {
+                            $order = $this->orderLine($row['sales_order_line_id'] ?? 0, $customer->id, $data['document_date']);
+                            $orderLineId = $order->id;
+                            $description = $order->description;
+                            $direct = ['direct_item_id' => null, 'direct_unit_price' => null, 'direct_discount_amount' => null];
+                        }
+                        SalesDispatchLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'sales_order_line_id' => $orderLineId, 'stock_position_id' => $row['stock_position_id'] ?? 0, 'base_quantity' => D::input($row['base_quantity'] ?? '0'), 'net_revenue_amount' => 0, 'revenue_account_id' => $this->account('sales_revenue'), 'description' => $description] + $direct);
                     }
                     break;
                 case 'invoice':
@@ -280,7 +307,8 @@ class SalesService
                         $order = $dispatch->orderLine;
                         $qty = D::input($row['base_quantity'] ?? '0');
                         // Invoice measured in the base unit; dispatch determines its exact net value at posting.
-                        $line = SalesInvoiceLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'sales_order_line_id' => $order->id, 'item_id' => $order->item_id, 'description' => $order->description, 'unit_id' => $order->item->base_unit_id, 'quantity' => $qty, 'base_quantity' => $qty, 'conversion_factor' => 1, 'unit_price' => 0, 'net_amount' => 0, 'gross_amount' => 0]);
+                        $item = $order?->item ?? Item::with('baseUnit')->findOrFail($dispatch->direct_item_id);
+                        $line = SalesInvoiceLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'sales_order_line_id' => $order?->id, 'item_id' => $item->id, 'description' => $order?->description ?? $dispatch->description, 'unit_id' => $item->base_unit_id, 'quantity' => $qty, 'base_quantity' => $qty, 'conversion_factor' => 1, 'unit_price' => 0, 'net_amount' => 0, 'gross_amount' => 0]);
                         SalesInvoiceDispatchMatch::create(['sales_invoice_line_id' => $line->id, 'sales_dispatch_line_id' => $dispatch->id, 'matched_base_quantity' => $qty, 'net_amount' => 0]);
                     }
                     $this->priceInvoice($doc, $header, $customer);
@@ -295,10 +323,10 @@ class SalesService
                             G::fail('Saleable returns need internal storage; other returns need quarantine.');
                         }
                         $lotNo = $row['lot_number'] ?? '';
-                        if (! $lotNo || StockLot::where('item_id', $dispatch->orderLine->item_id)->where('lot_number', $lotNo)->exists()) {
+                        if (! $lotNo || StockLot::where('item_id', $this->dispatchItemId($dispatch))->where('lot_number', $lotNo)->exists()) {
                             G::fail('Enter a new, unique return lot number.');
                         }
-                        $lot = StockLot::create(['item_id' => $dispatch->orderLine->item_id, 'lot_number' => $lotNo, 'origin_document_id' => $doc->id, 'quality_status' => $condition === 'saleable' ? 'released' : 'held', 'external_lot_reference' => 'Returned from '.$dispatch->position->lot->lot_number]);
+                        $lot = StockLot::create(['item_id' => $this->dispatchItemId($dispatch), 'lot_number' => $lotNo, 'origin_document_id' => $doc->id, 'quality_status' => $condition === 'saleable' ? 'released' : 'held', 'external_lot_reference' => 'Returned from '.$dispatch->position->lot->lot_number]);
                         $position = StockPosition::create(['stock_lot_id' => $lot->id, 'warehouse_location_id' => $location->id]);
                         StockBalance::create(['stock_position_id' => $position->id, 'on_hand_quantity' => 0, 'reserved_quantity' => 0]);
                         SalesReturnLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'sales_dispatch_line_id' => $dispatch->id, 'stock_position_id' => $position->id, 'base_quantity' => D::input($row['base_quantity'] ?? '0'), 'condition_code' => $condition, 'reason' => $data['reason']]);
@@ -409,36 +437,57 @@ class SalesService
     private function postDispatch(int $actor, Document $doc, SalesDispatch $header, PartyRole $customer): void
     {
         $date = $doc->document_date->format('Y-m-d');
+        if ($header->lines->every(fn ($line) => $line->sales_order_line_id === null)) {
+            $commitment = '0';
+            foreach ($header->lines as $line) {
+                $gross = D::round(bcmul($line->base_quantity, $line->direct_unit_price, 14));
+                $commitment = bcadd($commitment, bcsub($gross, $line->direct_discount_amount, 4), 4);
+            }
+            $this->credit($customer, $commitment);
+        }
         $cost = '0';
         $revenue = '0';
         $revenueAccounts = [];
         $positions = [];
         foreach ($header->lines as $line) {
-            $order = $this->orderLine($line->sales_order_line_id, $customer->id, $date);
+            $order = $line->sales_order_line_id ? $this->orderLine($line->sales_order_line_id, $customer->id, $date) : null;
+            $itemId = $order?->item_id ?? $line->direct_item_id;
+            $item = $order?->item ?? Item::with('baseUnit', 'variant')->findOrFail($itemId);
             $p = $this->stock->position($line->stock_position_id, $date, true);
             $qty = $this->stock->quantity($p, $line->base_quantity);
-            if ($p->lot->item_id !== $order->item_id || $p->location->warehouse_id !== $header->warehouse_id || $p->location->location_type !== 'internal') {
-                G::fail('Dispatch stock must match the order item at internal storage in the selected warehouse.');
+            if ($p->lot->item_id !== $itemId || $p->location->warehouse_id !== $header->warehouse_id || $p->location->location_type !== 'internal') {
+                G::fail('Dispatch stock must match the selected item at internal storage in the selected warehouse.');
             }
-            $before = $this->dispatched($order->id);
-            $after = bcadd($before, $qty, 6);
-            // Include preceding lines of this still-draft dispatch in caps and revenue rounding.
-            foreach ($header->lines->where('line_no', '<', $line->line_no)->where('sales_order_line_id', $order->id) as $prior) {
-                $before = bcadd($before, $prior->base_quantity, 6);
-            }
-            $after = bcadd($before, $qty, 6);
-            if (bccomp($after, $order->base_quantity, 6) > 0) {
-                G::fail('Dispatch exceeds the unfulfilled order balance.');
-            }
-            $this->reservations->fulfill($actor, $order, $p, $qty, $date);
-            $held = (string) StockReservation::where('sales_order_line_id', $order->id)->sum(DB::raw('quantity-fulfilled_quantity-released_quantity'));
-            if (bccomp($held, bcsub($order->base_quantity, $after, 6), 6) > 0) {
-                G::fail('Other lots remain reserved above the remaining order balance. Release those reservations before dispatching another lot.');
+            if ($order) {
+                $before = $this->dispatched($order->id);
+                $after = bcadd($before, $qty, 6);
+                foreach ($header->lines->where('line_no', '<', $line->line_no)->where('sales_order_line_id', $order->id) as $prior) {
+                    $before = bcadd($before, $prior->base_quantity, 6);
+                }
+                $after = bcadd($before, $qty, 6);
+                if (bccomp($after, $order->base_quantity, 6) > 0) {
+                    G::fail('Dispatch exceeds the unfulfilled order balance.');
+                }
+                $this->reservations->fulfill($actor, $order, $p, $qty, $date);
+                $held = (string) StockReservation::where('sales_order_line_id', $order->id)->sum(DB::raw('quantity-fulfilled_quantity-released_quantity'));
+                if (bccomp($held, bcsub($order->base_quantity, $after, 6), 6) > 0) {
+                    G::fail('Other lots remain reserved above the remaining order balance. Release those reservations before dispatching another lot.');
+                }
+                $amount = bcsub($this->proportion($this->net($order), $after, $order->base_quantity), $this->proportion($this->net($order), $before, $order->base_quantity), 4);
+            } else {
+                $item = $item->load('baseUnit', 'variant');
+                if (! $item->is_active || ! $item->is_stocked || $item->item_type !== 'finished' || ! $item->baseUnit->is_active || ! in_array($item->baseUnit->code, ['SUIT', 'PACK']) || bccomp($qty, bcadd($qty, '0', 0), 6)) {
+                    G::fail('Direct dispatch requires a whole active finished suit or pack quantity.');
+                }
+                $gross = D::round(bcmul($qty, $line->direct_unit_price, 14));
+                if (bccomp($line->direct_discount_amount, $gross, 4) > 0) {
+                    G::fail('Direct dispatch discount exceeds its line value.');
+                }
+                $amount = bcsub($gross, $line->direct_discount_amount, 4);
             }
             if (bccomp($qty, $this->stock->available($p->id), 6) > 0) {
                 G::fail('Insufficient unreserved stock for this dispatch.');
             }
-            $amount = bcsub($this->proportion($this->net($order), $after, $order->base_quantity), $this->proportion($this->net($order), $before, $order->base_quantity), 4);
             $revenueAccount = LedgerAccount::findOrFail($line->revenue_account_id);
             if (! $revenueAccount->is_active || ! $revenueAccount->is_postable || $revenueAccount->account_type !== 'income' || $revenueAccount->control_type !== 'none') {
                 G::fail('The frozen dispatch revenue account is inactive or invalid. Cancel and recreate the draft after reviewing account configuration.');
@@ -477,7 +526,7 @@ class SalesService
             }
             $net = bcsub($this->proportion($dispatch->net_revenue_amount, $after, $dispatch->base_quantity), $this->proportion($dispatch->net_revenue_amount, $before, $dispatch->base_quantity), 4);
             $order = $dispatch->orderLine;
-            $price = bcdiv($order->unit_price, $order->conversion_factor, 8);
+            $price = $order ? bcdiv($order->unit_price, $order->conversion_factor, 8) : $dispatch->direct_unit_price;
             $gross = D::round(bcmul($qty, $price, 14));
             // A repeating base-unit price may not reproduce the exact frozen dispatch cents.
             // Snapshotted price rounds upward just enough to represent an explicit residual discount.
@@ -505,7 +554,7 @@ class SalesService
             $dispatch = $this->dispatchLine($line->sales_dispatch_line_id, $customer->id, $date);
             $p = $this->stock->position($line->stock_position_id, $date);
             $qty = $this->stock->quantity($p, $line->base_quantity);
-            if ($p->lot->origin_document_id !== $doc->id || $p->lot->item_id !== $dispatch->orderLine->item_id || $p->location->warehouse_id !== $header->warehouse_id || ! in_array($p->location->location_type, ['internal', 'quarantine']) || ($line->condition_code !== 'saleable' && ($p->location->location_type !== 'quarantine' || $p->lot->quality_status === 'released'))) {
+            if ($p->lot->origin_document_id !== $doc->id || $p->lot->item_id !== $this->dispatchItemId($dispatch) || $p->location->warehouse_id !== $header->warehouse_id || ! in_array($p->location->location_type, ['internal', 'quarantine']) || ($line->condition_code !== 'saleable' && ($p->location->location_type !== 'quarantine' || $p->lot->quality_status === 'released'))) {
                 G::fail('Return stock provenance or quality storage is invalid.');
             }
             $before = bcadd($this->returned($dispatch->id), $used[$dispatch->id] ?? '0', 6);

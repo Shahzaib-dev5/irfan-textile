@@ -1,9 +1,8 @@
 @extends('module.core::layouts.app')
-@section('title', 'Party payments & adjustments')
+@section('title', $kind==='payment'?'Cash payable voucher':($kind==='receipt'?'Cash receipt voucher':'Party adjustments'))
 @section('content')
-@include('module.accounting::finance.nav')
 <div class="finance" x-data="financeGuide(@js($guide))">
-    <h1 class="text-3xl font-semibold">{{ $kind === 'receipt' ? 'Receive money' : ($kind === 'settlement' ? 'Adjust an advance / existing credit' : 'Pay a supplier or vendor') }}</h1>
+    <h1 class="text-3xl font-semibold">{{ $kind === 'receipt' ? 'Cash receipt voucher' : ($kind === 'settlement' ? 'Adjust an advance / existing credit' : 'Cash payable voucher') }}</h1>
     <p class="mt-3 text-slate-500">Choose the party, review what is unpaid, then record money or adjust an advance already recorded.</p>
     <noscript><p>This guided form requires JavaScript. Enable JavaScript or <a href="{{ route('finance.create', ['kind' => $kind, 'advanced' => 1]) }}">use the standard form</a>.</p></noscript>
     <form method="POST" action="{{ route('finance.store') }}">
@@ -35,9 +34,9 @@
         </section>
         <section class="panel" x-show="role && account">
             <h2 class="font-semibold">2. What do you want to do?</h2>
-            <label class="mt-3"><input type="radio" value="money" x-model="mode" @change="switchMode()"> <span x-text="moneyKind === 'payment' ? 'Record money paid now (or an earlier payment not yet recorded)' : 'Record money received now (or an earlier receipt not yet recorded)'"></span></label>
+            <label class="mt-3"><input type="radio" value="money" x-model="mode" @change="switchMode()"> <span x-text="moneyKind === 'payment' ? 'Record a supplier/vendor payment (cash payable voucher)' : 'Record a customer receipt (cash receipt voucher)'"></span></label>
             <label class="mt-3"><input type="radio" value="settlement" x-model="mode" @change="switchMode()"> Adjust an advance / credit already recorded — no new money movement</label>
-            <p class="mt-3 text-sm" x-show="credits.length && mode === 'money'">This party has available advance / credit. To use it against a bill, choose the adjustment option above. Record a new payment only for additional money actually paid.</p>
+            <p class="mt-3 text-sm" x-show="credits.length && mode === 'money'">This party has available advance / credit. To use it against a bill, choose the adjustment option above. Record a new cash payable voucher only for additional money actually paid.</p>
         </section>
         <section class="panel" x-show="role && account">
             <h2 class="font-semibold">3. Enter the details</h2>
@@ -51,13 +50,13 @@
                 <input type="hidden" name="settlement_account_id" :value="account">
                 <label x-text="moneyKind === 'payment' ? 'Pay from this cash / bank account' : 'Receive into this cash / bank account'"></label><div></div>
                 <label>Cash / bank<select name="bank_account_id" x-model="bank" @change="chooseBank()" required><option value="">Choose account</option>@foreach($banks as $b)<option value="{{ $b->id }}">{{ $b->name }} ({{ $b->account_kind }})</option>@endforeach</select></label>
-                <label>Payment method<select name="method" x-model="method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="cheque">Cheque</option><option value="other">Other</option></select></label>
+                <label>Method<select name="method" x-model="method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="cheque">Cheque</option><option value="other">Other</option></select></label>
                 @if($banks->isEmpty())<p class="md:col-span-2 text-sm">No cash / bank account configured. <a class="text-brand" href="{{ route('finance.accounts') }}">Set up your actual cash box or bank account</a> first.</p>@endif
                 <label>Total money <span x-text="moneyKind === 'payment' ? 'paid' : 'received'"></span> (PKR)<input name="amount" type="number" min="0.0001" step="0.0001" x-model="amount" @input="suggest()" required></label>
                 <label x-text="normalFlow ? 'Bill / invoice to pay against' : 'Existing item to refund'"></label>
                 <label class="md:col-span-2">Apply to<select name="apply_to_open_item_id" x-model="bill" @change="suggest()"><option value="">No bill — keep as advance / on account</option><template x-for="i in targets" :key="i.id"><option :value="i.id" x-text="label(i)"></option></template></select></label>
                 <label x-show="bill">Amount used against selected item (PKR)<input name="apply_amount" type="number" min="0.0001" step="0.0001" x-model="applied" :disabled="mode !== 'money' || !bill" :required="mode === 'money' && !!bill"></label>
-                <p class="text-sm self-center" aria-live="polite">Left on account after this payment / receipt: <strong x-text="money(unapplied)"></strong>. This is not a second payment.</p>
+                <p class="text-sm self-center" aria-live="polite">Unapplied after this voucher: <strong x-text="money(unapplied)"></strong>. This is not a second payment.</p>
             </fieldset>
             <fieldset :disabled="mode !== 'settlement'" x-show="mode === 'settlement'" class="mt-4 grid gap-4 md:grid-cols-2">
                 <p class="md:col-span-2 text-sm">Use money or credit already recorded. Your bank / cash balance will not change.</p>
@@ -71,7 +70,7 @@
         </section>
         <section class="panel">
             <p class="mb-3 text-sm">Review the party, date and amount. Confirm saves once; posted corrections require a reversal.</p>
-            <button :disabled="!role || !account || (mode === 'settlement' && (!bill || !credit))" x-text="mode === 'settlement' ? 'Confirm advance adjustment' : (moneyKind === 'payment' ? 'Confirm payment' : 'Confirm receipt')">Confirm</button>
+            <button :disabled="!role || !account || (mode === 'settlement' && (!bill || !credit))" x-text="mode === 'settlement' ? 'Confirm advance adjustment' : (moneyKind === 'payment' ? 'Confirm cash payable voucher' : 'Confirm cash receipt voucher')">Confirm</button>
             <a class="ml-4 text-sm" href="{{ route('finance.index') }}">Cancel</a>
             <a class="ml-4 text-sm text-brand" href="{{ route('finance.create', ['kind' => $kind, 'advanced' => 1]) }}">Advanced form / multiple allocations</a>
         </section>

@@ -1,5 +1,25 @@
 # Phase 11 - Wholesale Sales and Customers
 
+## Direct dispatch follow-up (2026-11-06)
+
+Sales > Dispatch now offers **From order** (the existing workflow) and
+**Direct dispatch**. Direct dispatch selects the customer, actual released
+finished stock, warehouse, quantity and agreed selling price, then confirms a
+tagged dispatch without creating an order. It posts the same FIFO stock/COGS and
+unbilled-revenue journal as an order dispatch. Create the invoice from that
+posted dispatch next; invoice matching reclassifies unbilled AR to customer AR.
+An authorized Finance user then records and allocates the customer receipt.
+These remain separate source documents and do not duplicate revenue or stock.
+
+The follow-up adds migration
+`database/migrations/2026_11_06_000001_add_direct_wholesale_dispatch.php`:
+nullable order-line links on dispatch/invoice lines and direct dispatch item,
+price and discount snapshots with a source-integrity CHECK. Existing orders and
+dispatches retain their order links. Hosting must apply this additive migration
+before using Direct dispatch. No existing business data is rewritten. Direct
+dispatch remains subject to the customer credit hold/limit and requires released
+internal stock; it does not combine receipt collection into the dispatch.
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit
@@ -49,7 +69,9 @@ Use **Wholesale sales > Overview / Start here**. The normal sequence is:
    Frozen prices/discounts determine the amount; it cannot be freely repriced.
    Save for later for invoice preview, then confirm. Invoice posts billed AR and
    clears unbilled AR; it never issues stock or recognizes sales revenue again.
-7. Download A4 PDFs / print orders, dispatch, invoices, physical returns and credits.
+7. Download the A4 PDF or open print preview directly from each Sales list row,
+   or from the document detail page. This covers orders, dispatches, invoices,
+   physical returns and credits.
    Open Customer history from a document for all sales records and credit exposure.
 8. Returns: choose the original dispatch, measured return quantity, new return lot,
    warehouse and receiving location. Inspected saleable goods enter internal

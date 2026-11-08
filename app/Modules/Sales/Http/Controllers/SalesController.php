@@ -30,9 +30,9 @@ class SalesController extends Controller
 
     public function create(Request $r)
     {
-        $f = $r->validate(['kind' => 'required|in:order,dispatch,invoice,return,credit', 'customer' => 'nullable|integer', 'invoice' => 'nullable|integer']);
+        $f = $r->validate(['kind' => 'required|in:order,dispatch,invoice,return,credit', 'customer' => 'nullable|integer', 'invoice' => 'nullable|integer', 'direct' => 'sometimes|boolean']);
 
-        return view('module.sales::form', $this->workspace->form($f['kind'], isset($f['customer']) ? (int) $f['customer'] : null, isset($f['invoice']) ? (int) $f['invoice'] : null));
+        return view('module.sales::form', $this->workspace->form($f['kind'], isset($f['customer']) ? (int) $f['customer'] : null, isset($f['invoice']) ? (int) $f['invoice'] : null, (bool) ($f['direct'] ?? false)));
     }
 
     public function items(Request $r)

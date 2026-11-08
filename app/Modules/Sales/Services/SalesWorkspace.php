@@ -37,13 +37,13 @@ class SalesWorkspace
         return Document::with('type')->whereHas('type', fn ($q) => $q->where('module_code', 'sales')->when($f['kind'] ?? null, fn ($q, $k) => $q->where('code', SalesService::TYPES[$k] ?? '')))->when($f['q'] ?? null, fn ($q, $v) => $q->where(fn ($q) => $q->where('number', 'like', '%'.$v.'%')->orWhere('id', $v)))->when($f['status'] ?? null, fn ($q, $v) => $q->where('status', $v))->latest('id')->paginate(20)->withQueryString();
     }
 
-    public function form(string $kind, ?int $customer, ?int $invoice): array
+    public function form(string $kind, ?int $customer, ?int $invoice, bool $directDispatch = false): array
     {
         $sources = [];
         $returns = [];
         if ($customer) {
             abort_unless($this->customers()->contains('id', $customer), 404);
-            if ($kind === 'dispatch') {
+            if ($kind === 'dispatch' && ! $directDispatch) {
                 foreach (SalesOrderLine::with('order.document', 'item.baseUnit')->whereHas('order', fn ($q) => $q->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted')))->get() as $line) {
                     $left = bcsub($line->base_quantity, $this->sales->dispatched($line->id), 6);
                     if (bccomp($left, '0', 6) > 0 && ! $this->sales->closed($line->document_id)) {
@@ -51,11 +51,21 @@ class SalesWorkspace
                     }
                 }
             }
+            if ($kind === 'dispatch' && $directDispatch) {
+                $byItem = [];
+                foreach ($this->positions() as $position) {
+                    if ($position['direct_dispatch_eligible'] && bccomp($position['available'], '0', 6) > 0) {
+                        $byItem[$position['item_id']] = ['id' => $position['item_id'], 'item_id' => $position['item_id'], 'label' => $position['item_label'], 'remaining' => $position['available']];
+                    }
+                }
+                $sources = array_values($byItem);
+            }
             if (in_array($kind, ['invoice', 'return'])) {
-                foreach (SalesDispatchLine::with('dispatch.document', 'orderLine.item.baseUnit')->whereHas('dispatch', fn ($q) => $q->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted')))->get() as $line) {
+                foreach (SalesDispatchLine::with('dispatch.document', 'orderLine.item.baseUnit', 'directItem.baseUnit')->whereHas('dispatch', fn ($q) => $q->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted')))->get() as $line) {
                     $left = bcsub($line->base_quantity, $kind === 'invoice' ? $this->sales->billed($line->id) : $this->sales->returned($line->id), 6);
                     if (bccomp($left, '0', 6) > 0) {
-                        $sources[] = ['id' => $line->id, 'item_id' => $line->orderLine->item_id, 'label' => $line->dispatch->document->number.' / '.$line->orderLine->item->sku.' / remaining '.$left.' '.$line->orderLine->item->baseUnit->code, 'remaining' => $left];
+                        $item = $line->orderLine?->item ?? $line->directItem;
+                        $sources[] = ['id' => $line->id, 'item_id' => $item->id, 'label' => $line->dispatch->document->number.' / '.($line->sales_order_line_id ? '' : 'Direct dispatch / ').$item->sku.' / remaining '.$left.' '.$item->baseUnit->code, 'remaining' => $left];
                     }
                 }
             }
@@ -68,12 +78,14 @@ class SalesWorkspace
             }
         }
 
-        return ['kind' => $kind, 'customerId' => $customer, 'invoiceId' => $invoice, 'customers' => $this->customers(), 'terms' => PaymentTerm::where('is_active', true)->get(), 'warehouses' => Warehouse::where('is_active', true)->get(), 'locations' => WarehouseLocation::with('warehouse')->where('is_active', true)->whereIn('location_type', ['internal', 'quarantine'])->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get(), 'sources' => $sources, 'returnChoices' => $returns, 'positions' => $this->positions(), 'invoices' => $customer ? SalesInvoice::with('document')->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted'))->latest('document_id')->get() : collect()];
+        $positions = $this->positions();
+
+        return ['kind' => $kind, 'directDispatch' => $directDispatch, 'customerId' => $customer, 'invoiceId' => $invoice, 'customers' => $this->customers(), 'terms' => PaymentTerm::where('is_active', true)->get(), 'warehouses' => Warehouse::where('is_active', true)->get(), 'locations' => WarehouseLocation::with('warehouse')->where('is_active', true)->whereIn('location_type', ['internal', 'quarantine'])->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get(), 'sources' => $sources, 'returnChoices' => $returns, 'positions' => $positions, 'invoices' => $customer ? SalesInvoice::with('document')->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted'))->latest('document_id')->get() : collect()];
     }
 
     public function positions(): mixed
     {
-        return StockPosition::with('lot.item.baseUnit', 'location.warehouse')->whereHas('lot', fn ($q) => $q->where('quality_status', 'released')->where(fn ($q) => $q->whereNull('expires_on')->orWhereDate('expires_on', '>=', G::businessDate()))->whereHas('item', fn ($q) => $q->where('item_type', 'finished')->where('is_active', true)->where('is_stocked', true)))->whereHas('location', fn ($q) => $q->where('is_active', true)->where('location_type', 'internal')->whereHas('warehouse', fn ($q) => $q->where('is_active', true)))->get()->map(fn ($p) => ['id' => $p->id, 'item_id' => $p->lot->item_id, 'warehouse_id' => $p->location->warehouse_id, 'on_hand' => $this->stock->onHand($p->id), 'available' => $this->stock->available($p->id), 'label' => $p->lot->item->sku.' / '.$p->lot->lot_number.' / '.$p->location->warehouse->code.'/'.$p->location->code.' / '.$this->stock->available($p->id).' '.$p->lot->item->baseUnit->code])->filter(fn ($p) => bccomp($p['on_hand'], '0', 6) > 0)->values();
+        return StockPosition::with('lot.item.baseUnit', 'lot.item.variant', 'location.warehouse')->whereHas('lot', fn ($q) => $q->where('quality_status', 'released')->where(fn ($q) => $q->whereNull('expires_on')->orWhereDate('expires_on', '>=', G::businessDate()))->whereHas('item', fn ($q) => $q->where('item_type', 'finished')->where('is_active', true)->where('is_stocked', true)))->whereHas('location', fn ($q) => $q->where('is_active', true)->where('location_type', 'internal')->whereHas('warehouse', fn ($q) => $q->where('is_active', true)))->get()->map(fn ($p) => ['id' => $p->id, 'item_id' => $p->lot->item_id, 'item_label' => $p->lot->item->sku.' / '.$p->lot->item->name.' / '.$p->lot->item->baseUnit->code, 'direct_dispatch_eligible' => $p->lot->item->baseUnit->is_active && in_array($p->lot->item->baseUnit->code, ['SUIT', 'PACK']) && ($p->lot->item->baseUnit->code === 'PACK' || ($p->lot->item->variant && $p->lot->item->variant->is_active)), 'warehouse_id' => $p->location->warehouse_id, 'on_hand' => $this->stock->onHand($p->id), 'available' => $this->stock->available($p->id), 'label' => $p->lot->item->sku.' / '.$p->lot->lot_number.' / '.$p->location->warehouse->code.'/'.$p->location->code.' / '.$this->stock->available($p->id).' '.$p->lot->item->baseUnit->code])->filter(fn ($p) => bccomp($p['on_hand'], '0', 6) > 0)->values();
     }
 
     public function items(string $q): mixed

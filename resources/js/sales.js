@@ -12,7 +12,7 @@ export function salesForm(initial = [], sources = [], positions = [], itemUrl = 
         },
         choose(row, item) { if (!item) return; row.item_id=String(item.id); row.unit_id=String(item.unit_id); row.item_label=item.label; row.units=item.units; },
         source(row, field) { return this.sources.find(s => String(s.id)===String(row[field])); },
-        positionsFor(row) { const source=this.source(row,'sales_order_line_id'); return this.positions.filter(p => source && p.item_id===source.item_id); },
+        positionsFor(row) { const source=this.source(row,'sales_order_line_id'); const itemId=source?.item_id || row.item_id; return this.positions.filter(p => itemId && String(p.item_id)===String(itemId)); },
         estimate(row) { const q=Number(row.quantity), p=Number(row.unit_price), d=Number(row.discount_amount); return Number.isFinite(q*p-d) ? Math.max(0,q*p-d).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0.00'; }
     };
 }

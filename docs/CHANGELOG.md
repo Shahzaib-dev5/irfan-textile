@@ -1,5 +1,36 @@
 # Changelog
 
+## Sales list PDF and print actions (2026-11-06)
+
+- Added direct PDF download and print-preview links to each Sales document row.
+- Reused existing Sales document routes; no schema, route or permission changes.
+
+## Finance navigation and voucher labels (2026-11-06)
+
+- Removed repeated Finance subnavigation from individual Finance screens.
+- Removed the numbered Finance overview instructions and restored its existing
+  form, table and panel styles in the main stylesheet.
+- Renamed payment/receipt labels to Cash payable voucher and Cash receipt
+  voucher across navigation, forms, lists, document details and PDFs.
+- Kept internal document codes, routes, permissions and accounting postings
+  unchanged; no database migration is required.
+
+## Direct dispatch without a sales order (2026-11-06)
+
+- Added Direct dispatch inside Sales > Dispatch; the existing order-based
+  dispatch path remains available.
+- Direct dispatch records customer, released stock lot, actual quantity and
+  agreed price/discount, then uses the existing stock/FIFO and unbilled-revenue
+  posting. The invoice and Finance receipt remain separately recorded.
+- Added an additive migration for nullable order links and direct item/price
+  snapshots. Hosting must apply the migration before using the new path.
+- Tagged direct dispatch in the sales list, document detail and PDF.
+
+## Remove repeated Sales page navigation (2026-11-06)
+
+- Removed the duplicate in-page Sales links; the top Sales navigation remains the module switcher.
+- No routes, permissions, or data changed.
+
 ## Searchable goods receipt order field (2026-11-05)
 
 - Replaced the approved order dropdown with type-to-search by PO number or supplier.

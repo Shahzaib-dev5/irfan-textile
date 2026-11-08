@@ -1,5 +1,64 @@
 # Project state and phase completion reports
 
+## Sales list PDF/print actions (2026-11-06)
+
+Added per-row **Download PDF** and **View / Print** links to Sales document
+tables, so orders, dispatches, invoices and other Sales documents can be opened
+or printed without first opening the detail page. Existing routes and PDF
+generation are reused; no schema or permission changes. Blade compilation and
+`git diff --check` passed. Automated tests and browser printing were not run.
+
+## Finance navigation and voucher labels (2026-11-06)
+
+Removed the repeated in-page Finance navigation; the global module/sidebar
+navigation remains. Renamed payment/receipt actions and historical document
+labels to **Cash payable voucher** and **Cash receipt voucher** across Finance
+navigation, forms, lists, details and PDFs. Internal document codes, routes,
+permissions, journals and balances are unchanged. Updated the configuration
+seeder for new installations; no database migration or data rewrite is needed.
+Removed the numbered Start here panel from the Finance overview and restored
+Finance-specific form, table and panel styles in the application stylesheet,
+keeping the existing layout without duplicate page navigation. PHP syntax,
+Pint, Blade compilation, Vite build and `git diff --check` passed. Automated
+tests and browser acceptance were not run.
+
+## Direct sales dispatch follow-up (2026-11-06)
+
+**Feature:** Sales > Dispatch now supports Direct dispatch with no sales order,
+while preserving the order-based path. Direct dispatch uses released finished
+stock, customer, warehouse, quantity and frozen unit price/discount. Posting
+reuses the existing FIFO/COGS/unbilled-revenue source journal. Invoice is then
+matched to dispatch, and Finance records/allocates any receipt through the
+existing receipt flow. Direct dispatch is tagged on the list, document detail
+and PDF. Existing credit hold/limit rules still apply.
+
+**Files:** SalesService, SalesWorkspace, SalesController, SalesDispatchLine,
+SalesDocument, Sales form/list/detail views, sales.js, SALES.md,
+database/COMMERCIAL_FINANCE.md, CHANGELOG.md, TESTING.md.
+
+**Schema/migration:** additive migration
+`2026_11_06_000001_add_direct_wholesale_dispatch.php` makes dispatch and invoice
+order-line references nullable; adds direct item/price/discount snapshots and a
+dispatch source CHECK. No table count changes or existing data rewrite. Apply
+this migration on hosting before enabling the feature. Rollback is unsafe after
+direct dispatch history exists.
+
+**Routes/permissions:** no route or permission changes; existing Sales manage,
+confirm and view permissions govern both paths. **Checks:** PHP 8.4 syntax,
+Pint, Blade compilation, Vite production build, focused route listing and
+`git diff --check` passed. No automated tests were run. Browser interaction and
+target MySQL migration have not been verified.
+**Known limit:** dispatch, invoice and cash/bank receipt remain separate
+documents; direct dispatch cannot bypass the configured customer credit hold or
+limit and does not support immediate payment inside the dispatch transaction.
+
+## Sales navigation deduplication (2026-11-06)
+
+Removed the repeated in-page Sales navigation from Sales list, availability,
+form, history, overview and document screens. The top Sales navigation remains
+the single module switcher. No schema, route, or permission changes. Blade
+compilation and focused diff checks passed.
+
 ## Searchable supplier bill receipt field (2026-11-05)
 
 Supplier bills now search GRNs by receipt number/supplier and immediately load
