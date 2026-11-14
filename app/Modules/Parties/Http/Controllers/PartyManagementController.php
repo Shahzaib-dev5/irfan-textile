@@ -5,6 +5,7 @@ namespace App\Modules\Parties\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Party;
 use App\Models\PartyRole;
+use App\Models\LedgerAccount;
 use App\Models\PaymentTerm;
 use App\Models\ProcessingService;
 use App\Models\Unit;
@@ -12,15 +13,31 @@ use App\Models\VendorService;
 use App\Modules\Parties\Http\Requests\PublishVendorRateRequest;
 use App\Modules\Parties\Http\Requests\SavePartyRequest;
 use App\Modules\Parties\Services\PartyManagementService;
+use App\Modules\Accounting\Services\FinanceReports;
+use App\Modules\Inventory\Services\InventoryGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PartyManagementController extends Controller
 {
+    public function partyLedger(Request $request, FinanceReports $reports): View
+    {
+        $filters = $request->validate(['from' => 'nullable|date_format:Y-m-d', 'to' => 'nullable|date_format:Y-m-d|after_or_equal:from', 'account' => 'nullable|integer|exists:ledger_accounts,id', 'party' => 'nullable|integer|exists:parties,id']);
+        $from = $filters['from'] ?? now()->startOfYear()->format('Y-m-d');
+        $to = $filters['to'] ?? InventoryGuard::businessDate();
+        $result = DB::transaction(fn () => $reports->ledger($from, $to, $filters['account'] ?? null, $filters['party'] ?? null));
+        $type = 'party';
+        $accounts = LedgerAccount::orderBy('code')->get();
+        $parties = Party::orderBy('legal_name')->get();
+
+        return view('module.accounting::finance.report', compact('type', 'from', 'to', 'result', 'accounts', 'parties'));
+    }
+
     public function partyIndex(Request $request): View
     {
         $user = $request->user();
@@ -65,6 +82,30 @@ class PartyManagementController extends Controller
             }
         }, 3);
         return to_route('parties.index')->with('status', 'Party created with selected business roles.');
+    }
+
+    public function quickCustomer(Request $request, PartyManagementService $service): JsonResponse
+    {
+        $roles = $this->allowedSelectedRoles($request, ['customer']);
+        $existingParty = $request->filled('existing_party_id') ? Party::query()->findOrFail($request->integer('existing_party_id')) : null;
+        if ($existingParty) {
+            abort_unless($existingParty->is_active && ! $existingParty->roles()->whereHas('type', fn (Builder $query) => $query->where('code', 'customer'))->exists(), 422, 'This party is inactive or already has a customer role.');
+        }
+        $validated = $this->validatePartyPayload($request, $roles, false, $existingParty);
+        if ($existingParty) {
+            $validated['customer']['_preserve_party_identity'] = true;
+            $validated['customer']['_preserve_contacts_addresses'] = true;
+        }
+        $party = $service->save('customer', $validated['customer'], $existingParty, $request->user());
+        $customerRole = $party->roles()
+            ->whereHas('type', fn (Builder $query) => $query->where('code', 'customer'))
+            ->with('customerProfile.paymentTerm')
+            ->firstOrFail();
+
+        return response()->json([
+            'id' => $customerRole->id,
+            'label' => $party->legal_name.' / '.$party->code.' / '.$customerRole->customerProfile->paymentTerm->name.' / '.($customerRole->customerProfile->credit_hold ? 'CREDIT HOLD' : 'limit PKR '.$customerRole->customerProfile->credit_limit),
+        ], 201);
     }
 
     public function partyUpdate(Request $request, Party $party, PartyManagementService $service): RedirectResponse

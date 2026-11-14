@@ -6,7 +6,7 @@
 <div class="my-5 flex flex-wrap gap-3 text-sm">
 @if(!$fabric && auth()->user()->hasPermissionTo('inventory.manage'))<a class="rounded-lg bg-brand px-4 py-2 text-white" href="{{ route('physical-stock.create') }}">Add ready suits</a>@endif
 <a class="rounded-lg border border-line px-4 py-2" href="{{ route($fabric ? 'physical-stock.index' : 'physical-stock.fabric') }}">{{ $fabric ? 'Physical suit stock' : 'Processed fabric' }}</a>
-@if(auth()->user()->hasPermissionTo('inventory.manage'))<a class="rounded-lg border border-line px-4 py-2" href="{{ route('inventory.documents.create',['kind'=>'transfer']) }}">Warehouse transfer</a><a class="rounded-lg border border-line px-4 py-2" href="{{ route('inventory.documents.create',['kind'=>'adjustment']) }}">Count correction / damage</a>@endif
+@if(auth()->user()->hasPermissionTo('inventory.manage'))<a class="rounded-lg border border-line px-4 py-2" href="{{ route('inventory.documents.create',['kind'=>'transfer']) }}">Location transfer</a><a class="rounded-lg border border-line px-4 py-2" href="{{ route('inventory.documents.create',['kind'=>'adjustment']) }}">Count correction / damage</a>@endif
 <a class="rounded-lg border border-line px-4 py-2" href="{{ route('inventory.movements') }}">Stock ledger</a>
 @if(!$fabric && auth()->user()->hasPermissionTo('finished-goods.view'))<a class="rounded-lg border border-line px-4 py-2" href="{{ route('finished-goods.inventory') }}">Inspect / release ready stock</a>@endif
 @if(auth()->user()->hasPermissionTo('sales.documents.view'))<a class="rounded-lg border border-line px-4 py-2" href="{{ route('sales.overview') }}">Wholesale</a>@endif

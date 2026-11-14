@@ -1,5 +1,89 @@
 # Project state and phase completion reports
 
+## Inventory direct processed-fabric purchase (2026-11-11)
+
+Added **Direct fabric purchase** to Inventory availability for authorized Purchasing
+operators. One screen reuses the existing direct GRN, exact-cost supplier bill and
+optional Finance payment/allocation services inside one atomic transaction. Existing
+processed-fabric or counted ready-material items can be selected; users with Catalog
+maintenance permission can create a reusable PCS material item inline. The posted
+GRN remains the stock source, the bill remains the sole payable source, and an actual
+payment remains a separate cash/bank voucher and settlement. No editable stock,
+free-text stock identity, independent party balance, duplicated journal or schema
+change was added. New route: `/inventory/direct-fabric-purchase`. Focused tests were
+added but could not run locally because the available PHP CLI is 8.2.12 while Composer
+requires PHP 8.3 or newer; PHP syntax checks and the 70-module Vite build passed.
+
+Follow-up: the Inventory form now accepts multiple received lines/lots in one
+supplier invoice. Existing meter-based processed fabric remains supported, while
+counted ready textile components such as Dhank Dupatta use reusable material items
+measured in PCS. Inventory now groups current quantities by item and expands each
+total into its contributing lots, locations, quality and stock-history links. No
+schema or independent quantity field was added.
+
+## Inline customer creation for Sale orders (2026-11-10)
+
+Added a permission-gated customer dialog to the Sale order customer picker. It
+uses the existing Party validation and PartyManagementService to save the shared
+party identity and customer role/profile, or assign the customer role to an
+existing eligible party, then selects the customer and continues to the order
+form. Payment terms, sales notes, and credit permissions follow the existing
+Customers form. The POST endpoint is `sales.customers.quick-store`, gated by
+`sales.customer.manage`; the dialog is available in the Sale order customer
+picker. Changes are in PartyManagementController, the Parties routes,
+SalesWorkspace, the Sales form, SALES.md and CHANGELOG.md. No tables or
+migrations changed. PHP syntax checks, route listing and Blade compilation
+passed; `git diff --check` passed. Pint's check reported formatting differences
+in the two existing PHP files checked. Automated tests and interactive browser
+verification were not run.
+
+## Shared branded transaction PDF template (2026-11-10)
+
+Refreshed the shared A4 transaction document layout used by Purchasing,
+Processing, Production, Finished Goods, Sales and Finance PDFs/print views. It
+organizes company branding, document number/status, transaction metadata, line
+items, totals, notes and signature areas consistently. A configured company logo
+is shown; a company-initials mark is used when no logo is configured. No routes,
+permissions or database schema changed. Blade view caching and sample PDF
+generation succeeded; HTML layout was visually reviewed. A local PDF rasterizer
+was unavailable for direct PDF-page image inspection.
+
+## Multi-warehouse dispatch source selection (2026-11-09)
+
+The dispatch warehouse filter is optional. When blank, each dispatch line may
+pick an eligible source position from any active internal warehouse; each option
+shows its warehouse/location. Selecting a warehouse limits every line to it, and
+changing the selection clears incompatible line sources. Posting validates the
+warehouse restriction when present and continues to post exact per-position stock
+and FIFO movements. Returns still require one receiving warehouse.
+
+An additive migration makes `sales_dispatches.warehouse_id` nullable; existing
+records are unchanged. Apply the migration before using an unrestricted or
+multi-warehouse dispatch. Rollback is blocked once a null-warehouse dispatch is
+saved. Direct dispatch and order-based dispatch both use this flow.
+
+## Sales order labels (2026-11-09)
+
+Renamed the Sales navigation tab to **Sale orders** and clarified the list,
+creation heading and button labels. Internal document codes, routes and storage
+remain unchanged.
+
+## Party ledger tab (2026-11-09)
+
+Added a **Party ledger** tab under Parties that opens the existing posted-journal
+party statement with its party, account and date filters. It reuses FinanceReports
+and the existing report view; access requires `accounting.finance.view`. No schema
+or accounting posting behavior changed.
+
+## Filtered stock summary (2026-11-09)
+
+Added a compact summary above Inventory availability: internal company stock by
+base unit, company-owned stock at contractor locations by vendor, and physical
+suits in internal warehouses. The existing position table and movement links
+remain unchanged. Search, warehouse and quality filters apply to both the
+summary and detail table. Totals come from posted movement, reservation and
+value histories; no schema or route changes.
+
 ## Sales list PDF/print actions (2026-11-06)
 
 Added per-row **Download PDF** and **View / Print** links to Sales document

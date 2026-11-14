@@ -1,5 +1,15 @@
 # Textile Manufacturing ERP
 
+## Inventory direct processed-fabric purchase (2026-11-11)
+
+Inventory availability now offers **Direct fabric purchase** for ready-to-use
+processed fabric or counted textile components bought without a purchase order.
+Multiple lots can be entered on one invoice, and expandable item totals show their
+lot contents. One atomic confirmation reuses
+the normal GRN and exact-cost supplier bill, with an optional allocated cash/bank
+payment. It creates no editable stock or independent supplier balance. See the
+[inventory operating guide](docs/WAREHOUSES_INVENTORY.md).
+
 ## Guided Finance follow-up (2026-10-29)
 
 Payments, receipts and advance adjustments now use one party-first guided screen:

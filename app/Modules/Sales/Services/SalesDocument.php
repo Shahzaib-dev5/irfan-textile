@@ -69,7 +69,8 @@ class SalesDocument
             $meta['Payment terms'] = PaymentTerm::find($h->payment_term_id)?->name;
         }
         if ($kind === 'dispatch') {
-            $meta['Warehouse'] = Warehouse::find($h->warehouse_id)?->name;
+            $warehouseNames = $h->lines->map(fn ($line) => $line->position->location->warehouse->name)->unique()->values();
+            $meta['Warehouse'] = $h->warehouse_id ? Warehouse::find($h->warehouse_id)?->name : ($warehouseNames->count() === 1 ? $warehouseNames->first() : 'Multiple warehouses');
             $meta['Carrier / tracking'] = trim(($h->carrier ?? '').' / '.($h->tracking_reference ?? ''), ' /');
         }
         $columns = in_array($kind, ['order', 'invoice']) ? ['Item', 'Source / description', 'Quantity', 'Unit', 'PKR / unit', 'Discount PKR', 'Net PKR'] : ['Item', 'Source / details', 'Quantity', 'Unit', 'Net PKR'];

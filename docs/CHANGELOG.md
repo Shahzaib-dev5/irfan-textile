@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-11-11
+
+- Added an Inventory-stock entry point for direct purchases of ready processed fabric.
+- A single confirmation atomically posts the existing direct goods receipt and matched
+  supplier bill, plus an optional allocated cash/bank payment.
+- Added permission-gated inline creation of a reusable PCS ready-material Textile Item;
+  no free-text stock identity, editable balance, duplicate posting, or schema change.
+- Extended direct entry to multiple purchase lines/lots, including counted ready
+  components in PCS, and added expandable item totals with lot details in Inventory.
+
+## 2026-11-09
+
+- Made the dispatch warehouse selector optional so each line can source stock
+  from different warehouses; returns still require a warehouse. Added a
+  migration to allow dispatch headers without one fixed warehouse.
+- Added filter-aware inventory availability totals for internal company stock,
+  vendor-held company stock and physical suits by warehouse.
+- Added a permission-gated Party ledger tab under Parties, reusing the existing
+  party statement report.
+- Renamed the Sales Orders tab and related screen actions to Sale orders.
+
+## 2026-11-10
+
+- Added a permission-gated inline Add customer dialog to Sale orders. It saves
+  through the shared Parties service and selects the customer for the order.
+- Refreshed the shared branded A4 template for transaction PDFs and print views
+  across Purchasing, Processing, Production, Finished Goods, Sales and Finance.
+
 ## Sales list PDF and print actions (2026-11-06)
 
 - Added direct PDF download and print-preview links to each Sales document row.

@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\Item;
 use App\Models\JournalLine;
 use App\Models\PartyRole;
+use App\Models\Party;
 use App\Models\PaymentTerm;
 use App\Models\SalesCreditNote;
 use App\Models\SalesDispatch;
@@ -80,7 +81,7 @@ class SalesWorkspace
 
         $positions = $this->positions();
 
-        return ['kind' => $kind, 'directDispatch' => $directDispatch, 'customerId' => $customer, 'invoiceId' => $invoice, 'customers' => $this->customers(), 'terms' => PaymentTerm::where('is_active', true)->get(), 'warehouses' => Warehouse::where('is_active', true)->get(), 'locations' => WarehouseLocation::with('warehouse')->where('is_active', true)->whereIn('location_type', ['internal', 'quarantine'])->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get(), 'sources' => $sources, 'returnChoices' => $returns, 'positions' => $positions, 'invoices' => $customer ? SalesInvoice::with('document')->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted'))->latest('document_id')->get() : collect()];
+        return ['kind' => $kind, 'directDispatch' => $directDispatch, 'customerId' => $customer, 'invoiceId' => $invoice, 'customers' => $this->customers(), 'eligibleParties' => Party::query()->where('is_active', true)->whereDoesntHave('roles', fn ($q) => $q->whereHas('type', fn ($type) => $type->where('code', 'customer')))->with(['roles.type', 'addresses' => fn ($q) => $q->where('is_active', true)])->orderBy('legal_name')->get(), 'terms' => PaymentTerm::where('is_active', true)->get(), 'warehouses' => Warehouse::where('is_active', true)->get(), 'locations' => WarehouseLocation::with('warehouse')->where('is_active', true)->whereIn('location_type', ['internal', 'quarantine'])->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get(), 'sources' => $sources, 'returnChoices' => $returns, 'positions' => $positions, 'invoices' => $customer ? SalesInvoice::with('document')->where('customer_party_role_id', $customer)->whereHas('document', fn ($q) => $q->where('status', 'posted'))->latest('document_id')->get() : collect()];
     }
 
     public function positions(): mixed

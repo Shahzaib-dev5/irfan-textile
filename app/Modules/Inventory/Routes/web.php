@@ -15,6 +15,7 @@ Route::middleware(['auth', 'active.user', 'permission:inventory.view'])->prefix(
 Route::middleware(['auth', 'active.user'])->prefix('inventory')->name('inventory.')->group(function () {
     Route::middleware('permission:inventory.view')->group(function () {
         Route::get('/', [InventoryController::class, 'index'])->name('index');
+        Route::get('/direct-fabric-purchase', [InventoryController::class, 'directFabricPurchase'])->name('direct-fabric-purchase.create');
         Route::get('/movements', [InventoryController::class, 'movements'])->name('movements');
         Route::get('/reconciliation', [InventoryController::class, 'reconcile'])->name('reconciliation');
         Route::get('/documents', [InventoryController::class, 'documents'])->name('documents.index');
@@ -22,6 +23,7 @@ Route::middleware(['auth', 'active.user'])->prefix('inventory')->name('inventory
         Route::get('/documents/{document}', [InventoryController::class, 'show'])->name('documents.show');
         Route::get('/documents/{document}/edit', [InventoryController::class, 'form'])->name('documents.edit')->middleware('permission:inventory.manage');
     });
+    Route::post('/direct-fabric-purchase', [InventoryController::class, 'storeDirectFabricPurchase'])->name('direct-fabric-purchase.store');
     Route::post('/documents', [InventoryController::class, 'save'])->name('documents.store')->middleware('permission:inventory.manage');
     Route::put('/documents/{document}', [InventoryController::class, 'save'])->name('documents.update')->middleware('permission:inventory.manage');
     Route::post('/documents/{document}/{action}', [InventoryController::class, 'action'])->whereIn('action', ['post', 'cancel', 'reserve', 'release', 'reverse'])->name('documents.action');

@@ -1,6 +1,6 @@
-export function salesForm(initial = [], sources = [], positions = [], itemUrl = '') {
+export function salesForm(initial = [], sources = [], positions = [], itemUrl = '', warehouseId = '') {
     return {
-        lines: [], sources, positions, itemUrl, results: [], query: '', searchError: '', serial: 0, searchSequence: 0,
+        lines: [], sources, positions, itemUrl, warehouseId, results: [], query: '', searchError: '', serial: 0, searchSequence: 0,
         init() { this.lines = (initial.length ? initial : [{}]).map(row => this.normalize(row)); },
         normalize(row) { return {key: ++this.serial, item_id:'', unit_id:'', quantity:'', unit_price:'', discount_amount:'0', sales_order_line_id:'', stock_position_id:'', base_quantity:'', sales_dispatch_line_id:'', warehouse_location_id:'', lot_number:'', condition_code:'quarantine', sales_invoice_dispatch_match_id:'', sales_return_line_id:'', credited_base_quantity:'0', net_amount:'', ...row}; },
         add() { this.lines.push(this.normalize({})); },
@@ -12,7 +12,8 @@ export function salesForm(initial = [], sources = [], positions = [], itemUrl = 
         },
         choose(row, item) { if (!item) return; row.item_id=String(item.id); row.unit_id=String(item.unit_id); row.item_label=item.label; row.units=item.units; },
         source(row, field) { return this.sources.find(s => String(s.id)===String(row[field])); },
-        positionsFor(row) { const source=this.source(row,'sales_order_line_id'); const itemId=source?.item_id || row.item_id; return this.positions.filter(p => itemId && String(p.item_id)===String(itemId)); },
+        positionsFor(row) { const source=this.source(row,'sales_order_line_id'); const itemId=source?.item_id || row.item_id; return this.positions.filter(p => itemId && String(p.item_id)===String(itemId) && (!this.warehouseId || String(p.warehouse_id)===String(this.warehouseId))); },
+        setWarehouse(id) { this.warehouseId=id; for (const row of this.lines) if (row.stock_position_id && !this.positionsFor(row).some(p => String(p.id)===String(row.stock_position_id))) row.stock_position_id=''; },
         estimate(row) { const q=Number(row.quantity), p=Number(row.unit_price), d=Number(row.discount_amount); return Number.isFinite(q*p-d) ? Math.max(0,q*p-d).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0.00'; }
     };
 }

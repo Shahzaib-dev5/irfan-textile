@@ -7,6 +7,7 @@ use App\Models\StockCostLayer;
 use App\Models\StockPosition;
 use App\Modules\Core\Services\AuditLogger;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class InventoryInquiry
@@ -24,6 +25,79 @@ class InventoryInquiry
             ->when($filters['warehouse_id'] ?? null, fn ($q, $id) => $q->whereHas('location', fn ($l) => $l->where('warehouse_id', $id)))
             ->when($filters['quality_status'] ?? null, fn ($q, $status) => $q->whereHas('lot', fn ($l) => $l->where('quality_status', $status)))
             ->orderBy('id')->paginate(25)->withQueryString();
+    }
+
+    /** Current filtered stock totals, grouped by ownership/vendor and by suit warehouse. */
+    public function availabilitySummary(array $filters = []): array
+    {
+        $movements = DB::table('stock_movements')->select('stock_position_id')->selectRaw('SUM(quantity_delta) as quantity')->groupBy('stock_position_id');
+        $reservations = DB::table('stock_reservations')->select('stock_position_id')->selectRaw('SUM(quantity-fulfilled_quantity-released_quantity) as quantity')->groupBy('stock_position_id');
+        $values = DB::table('inventory_value_entries as v')->join('stock_cost_layers as c', 'c.id', '=', 'v.stock_cost_layer_id')->select('c.stock_position_id')->selectRaw('SUM(v.amount_pkr) as value_pkr')->groupBy('c.stock_position_id');
+
+        $query = DB::table('stock_positions as sp')
+            ->join('stock_lots as sl', 'sl.id', '=', 'sp.stock_lot_id')
+            ->join('items as i', 'i.id', '=', 'sl.item_id')
+            ->join('units as u', 'u.id', '=', 'i.base_unit_id')
+            ->join('warehouse_locations as wl', 'wl.id', '=', 'sp.warehouse_location_id')
+            ->join('warehouses as w', 'w.id', '=', 'wl.warehouse_id')
+            ->leftJoin('party_roles as pr', 'pr.id', '=', 'wl.contractor_vendor_party_role_id')
+            ->leftJoin('parties as p', 'p.id', '=', 'pr.party_id')
+            ->leftJoinSub($movements, 'm', fn ($join) => $join->on('m.stock_position_id', '=', 'sp.id'))
+            ->leftJoinSub($reservations, 'r', fn ($join) => $join->on('r.stock_position_id', '=', 'sp.id'))
+            ->leftJoinSub($values, 'v', fn ($join) => $join->on('v.stock_position_id', '=', 'sp.id'))
+            ->where('i.is_stocked', true)
+            ->when($filters['q'] ?? null, fn ($q, $search) => $q->where(fn ($s) => $s->where('i.sku', 'like', '%'.$search.'%')->orWhere('i.name', 'like', '%'.$search.'%')->orWhere('sl.lot_number', 'like', '%'.$search.'%')->orWhereExists(fn ($roll) => $roll->selectRaw('1')->from('fabric_rolls')->whereColumn('fabric_rolls.id', 'sp.fabric_roll_id')->where('fabric_rolls.roll_number', 'like', '%'.$search.'%'))))
+            ->when($filters['warehouse_id'] ?? null, fn ($q, $id) => $q->where('w.id', $id))
+            ->when($filters['quality_status'] ?? null, fn ($q, $status) => $q->where('sl.quality_status', $status));
+
+        $rows = $query->selectRaw("wl.location_type, wl.contractor_vendor_party_role_id, COALESCE(p.trading_name, p.legal_name, 'Vendor') as vendor_name, w.id as warehouse_id, w.name as warehouse_name, i.item_type, u.code as unit, COALESCE(SUM(m.quantity),0) as on_hand, COALESCE(SUM(r.quantity),0) as reserved, COALESCE(SUM(v.value_pkr),0) as value_pkr")
+            ->groupBy('wl.location_type', 'wl.contractor_vendor_party_role_id', 'p.trading_name', 'p.legal_name', 'w.id', 'w.name', 'i.item_type', 'u.code')
+            ->orderBy('w.name')->orderBy('u.code')->get();
+
+        $company = $rows->where('location_type', 'internal')->groupBy('unit')->map(fn (Collection $group, $unit) => $this->sumAvailability($group, $unit))->values();
+        $vendors = $rows->where('location_type', 'contractor')->groupBy(fn ($row) => $row->contractor_vendor_party_role_id.'|'.$row->unit)->map(function (Collection $group) {
+            $row = $group->first();
+            return $this->sumAvailability($group, $row->unit) + ['vendor_name' => $row->vendor_name];
+        })->values();
+        $suits = $rows->where('location_type', 'internal')->where('item_type', 'finished')->where('unit', 'SUIT')->groupBy(fn ($row) => $row->warehouse_id.'|'.$row->unit)->map(function (Collection $group) {
+            $row = $group->first();
+            return $this->sumAvailability($group, $row->unit) + ['warehouse_name' => $row->warehouse_name];
+        })->values();
+
+        return compact('company', 'vendors', 'suits');
+    }
+
+    /** Filtered on-hand totals by item with their physical lot/location detail. */
+    public function itemBreakdown(array $filters = []): Collection
+    {
+        $positions = StockPosition::with(['lot.item.baseUnit', 'location.warehouse', 'roll'])
+            ->select('stock_positions.*')
+            ->selectSub(DB::table('stock_movements')->selectRaw('COALESCE(SUM(quantity_delta),0)')->whereColumn('stock_position_id', 'stock_positions.id'), 'ledger_quantity')
+            ->when($filters['q'] ?? null, fn ($q, $search) => $q->where(fn ($s) => $s->whereHas('lot', fn ($l) => $l->where('lot_number', 'like', '%'.$search.'%')->orWhereHas('item', fn ($i) => $i->where('sku', 'like', '%'.$search.'%')->orWhere('name', 'like', '%'.$search.'%')))->orWhereHas('roll', fn ($r) => $r->where('roll_number', 'like', '%'.$search.'%'))))
+            ->when($filters['warehouse_id'] ?? null, fn ($q, $id) => $q->whereHas('location', fn ($l) => $l->where('warehouse_id', $id)))
+            ->when($filters['quality_status'] ?? null, fn ($q, $status) => $q->whereHas('lot', fn ($l) => $l->where('quality_status', $status)))
+            ->orderBy('id')->get()->filter(fn ($position) => bccomp((string) $position->ledger_quantity, '0', 6) > 0);
+
+        return $positions->groupBy(fn ($position) => $position->lot->item_id)->map(function (Collection $lots) {
+            $item = $lots->first()->lot->item;
+            $total = $lots->reduce(fn ($sum, $position) => bcadd($sum, (string) $position->ledger_quantity, 6), '0');
+
+            return ['item' => $item, 'total' => $total, 'lots' => $lots];
+        })->values();
+    }
+
+    private function sumAvailability(Collection $rows, string $unit): array
+    {
+        $onHand = '0.000000';
+        $reserved = '0.000000';
+        $value = '0.0000';
+        foreach ($rows as $row) {
+            $onHand = bcadd($onHand, (string) $row->on_hand, 6);
+            $reserved = bcadd($reserved, (string) $row->reserved, 6);
+            $value = bcadd($value, (string) $row->value_pkr, 4);
+        }
+
+        return ['unit' => $unit, 'on_hand' => $onHand, 'reserved' => $reserved, 'available' => bcsub($onHand, $reserved, 6), 'value_pkr' => $value];
     }
 
     public function reconciliation(): array

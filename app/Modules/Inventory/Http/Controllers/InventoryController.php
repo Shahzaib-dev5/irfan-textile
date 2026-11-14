@@ -3,29 +3,62 @@
 namespace App\Modules\Inventory\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Document;
 use App\Models\Item;
+use App\Models\ItemCategory;
+use App\Models\PartyRole;
 use App\Models\StockLot;
 use App\Models\StockMovement;
 use App\Models\StockPosition;
 use App\Models\StockReservation;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Modules\Inventory\Http\Requests\DirectFabricPurchaseRequest;
 use App\Modules\Inventory\Http\Requests\InventoryActionRequest;
 use App\Modules\Inventory\Http\Requests\SaveInventoryRequest;
+use App\Modules\Inventory\Services\DirectFabricPurchase;
 use App\Modules\Inventory\Services\InventoryInquiry;
 use App\Modules\Inventory\Services\InventoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
     public function index(Request $request, InventoryInquiry $inquiry)
     {
         $this->authorize('viewAny', Document::class);
-        $positions = $inquiry->positions($request->only('q', 'warehouse_id', 'quality_status'));
+        $filters = $request->only('q', 'warehouse_id', 'quality_status');
+        $positions = $inquiry->positions($filters);
+        $summary = $inquiry->availabilitySummary($filters);
+        $itemGroups = $inquiry->itemBreakdown($filters);
         $warehouses = Warehouse::orderBy('name')->get();
 
-        return view('module.inventory::stock', compact('positions', 'warehouses'));
+        return view('module.inventory::stock', compact('positions', 'warehouses', 'summary', 'itemGroups'));
+    }
+
+    public function directFabricPurchase(Request $request)
+    {
+        abort_unless($request->user()->hasPermissionTo('purchasing.documents.manage')
+            && $request->user()->hasPermissionTo('purchasing.receipts.post')
+            && $request->user()->hasPermissionTo('purchasing.bills.post'), 403);
+        $items = Item::with('baseUnit')->whereIn('item_type', ['processed_fabric', 'trim'])->where('is_stocked', true)->where('is_active', true)->whereHas('baseUnit', fn ($q) => $q->whereIn('code', ['M', 'PCS']))->orderBy('sku')->get();
+        $suppliers = PartyRole::with('party')->where('is_active', true)->whereHas('type', fn ($q) => $q->where('code', 'supplier'))->whereHas('supplierProfile')->get()->sortBy('party.legal_name');
+        $locations = WarehouseLocation::with('warehouse')->where('is_active', true)->whereIn('location_type', ['internal', 'quarantine'])->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get();
+        $categories = ItemCategory::where('is_active', true)->orderBy('name')->get();
+        $banks = $request->user()->hasPermissionTo('accounting.finance.post')
+            ? BankAccount::where('is_active', true)->with('ledgerAccount')->orderBy('name')->get()
+            : collect();
+        $key = (string) Str::uuid();
+
+        return view('module.inventory::direct-fabric-purchase', compact('items', 'suppliers', 'locations', 'categories', 'banks', 'key'));
+    }
+
+    public function storeDirectFabricPurchase(DirectFabricPurchaseRequest $request, DirectFabricPurchase $service)
+    {
+        $result = $service->confirm($request->user()->id, $request->validated());
+
+        return redirect()->route('purchasing.show', $result['bill'])->with('status', 'Direct fabric purchase confirmed. Stock and supplier ledger were updated'.($result['payment'] ? ', and the payment was allocated.' : '.'));
     }
 
     public function documents(Request $request)

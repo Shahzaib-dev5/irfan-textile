@@ -1,5 +1,17 @@
 # Phase 11 - Wholesale Sales and Customers
 
+## Inline customer creation from Sale orders
+
+The Sale order customer picker includes **Add customer** for users with
+`sales.customer.manage`. It opens a dialog with the shared Party identity fields
+and customer profile fields, including payment terms, sales notes and
+permission-controlled credit settings. Saving calls the shared
+PartyManagementService, creates the `parties` identity and customer role/profile,
+or assigns the customer role to an existing eligible party, then selects the
+customer and loads the Sale order workflow. Validation and
+credit permissions match the Customers form. No database migration or second
+customer identity store is used.
+
 ## Direct dispatch follow-up (2026-11-06)
 
 Sales > Dispatch now offers **From order** (the existing workflow) and
@@ -52,7 +64,7 @@ Use **Wholesale sales > Overview / Start here**. The normal sequence is:
 2. Administrator: receive real finished SUIT variants or PACK stock through
    Production/Packing and inspect/release it at internal warehouse locations.
    Wholesale can view quantities without access to manufacturing costs.
-3. Sales orders: choose the customer, search SKU/name, choose a compatible sales
+3. Sale orders: choose the customer, search SKU/name, choose a compatible sales
    unit, enter quantity, unit price, total line discount and delivery address.
    Confirm once, or Save for later to review an unfinished draft. An order may
    exceed today's stock as a backorder, but dispatch/reservations may not.

@@ -1,5 +1,21 @@
 # Phase 6 — Warehouses and Inventory
 
+## Direct purchase of ready processed fabric
+
+Authorized Purchasing operators can open **Direct fabric purchase** from Inventory
+availability. The screen is a shortcut over the existing controlled sources: a posted
+direct GRN adds released processed-fabric stock, its exact-cost supplier bill creates
+the payable/open item, and an optional cash/bank voucher is allocated to that bill.
+Unpaid and partially paid amounts remain in the supplier ledger. Inline item creation
+requires Catalog maintenance permission and creates a reusable `processed_fabric`
+item measured in meters. Posted documents remain separate and immutable; corrections
+continue through returns, supplier credits, Finance reversals and settlements.
+One supplier invoice may contain multiple lines/lots. Counted ready textile
+components use reusable material items measured in PCS; meter-based processed
+fabric remains `processed_fabric` measured in M. Inventory availability groups
+the current ledger quantity by item and expands it into the contributing lots,
+locations, quality states and source-history links.
+
 Current integration: Phase 8 Processing now uses the shared party, stock/FIFO,
 calendar and source-journal foundations. See [PROCESSING.md](PROCESSING.md).
 The phase-specific scope below remains the historical implementation contract.

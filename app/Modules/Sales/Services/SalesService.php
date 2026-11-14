@@ -57,7 +57,7 @@ class SalesService
         return [
             'kind' => 'required|in:order,dispatch,invoice,return,credit', 'direct_dispatch' => 'sometimes|boolean', 'document_date' => 'required|date_format:Y-m-d', 'idempotency_key' => 'required|uuid',
             'customer_party_role_id' => 'required|integer|exists:customer_profiles,party_role_id', 'payment_term_id' => 'nullable|integer|exists:payment_terms,id',
-            'warehouse_id' => 'required_if:kind,dispatch,return|nullable|integer|exists:warehouses,id', 'customer_reference' => 'nullable|string|max:100', 'required_on' => 'nullable|date_format:Y-m-d',
+            'warehouse_id' => 'required_if:kind,return|nullable|integer|exists:warehouses,id', 'customer_reference' => 'nullable|string|max:100', 'required_on' => 'nullable|date_format:Y-m-d',
             'ship_to_address_id' => 'nullable|integer|exists:party_addresses,id', 'ship_to_snapshot' => 'nullable|string|max:3000', 'billing_address_snapshot' => 'nullable|string|max:3000',
             'notes' => 'nullable|string|max:5000', 'carrier' => 'nullable|string|max:150', 'tracking_reference' => 'nullable|string|max:100',
             'due_on' => 'nullable|date_format:Y-m-d|after_or_equal:document_date', 'reason' => 'required_if:kind,return,credit|nullable|string|min:5|max:500',
@@ -232,7 +232,7 @@ class SalesService
             $customer = $this->customer($data['customer_party_role_id']);
             $termId = $data['payment_term_id'] ?? $customer->customerProfile->payment_term_id;
             $term = $termId ? PaymentTerm::where('is_active', true)->findOrFail($termId) : null;
-            if (in_array($data['kind'], ['dispatch', 'return']) && ! Warehouse::whereKey($data['warehouse_id'])->where('is_active', true)->exists()) {
+            if (($data['kind'] === 'return' || ($data['kind'] === 'dispatch' && ! empty($data['warehouse_id']))) && ! Warehouse::whereKey($data['warehouse_id'])->where('is_active', true)->exists()) {
                 G::fail('Choose an active warehouse.');
             }
             $type = DocumentType::where('code', self::TYPES[$data['kind']])->where('is_active', true)->firstOrFail();
@@ -274,7 +274,7 @@ class SalesService
                     }
                     break;
                 case 'dispatch':
-                    SalesDispatch::create($common + ['warehouse_id' => $data['warehouse_id'], 'dispatched_at' => $data['document_date'].' 12:00:00', 'carrier' => $data['carrier'] ?? null, 'tracking_reference' => $data['tracking_reference'] ?? null, 'ship_to_snapshot' => $address, 'notes' => $notes]);
+                    SalesDispatch::create($common + ['warehouse_id' => $data['warehouse_id'] ?? null, 'dispatched_at' => $data['document_date'].' 12:00:00', 'carrier' => $data['carrier'] ?? null, 'tracking_reference' => $data['tracking_reference'] ?? null, 'ship_to_snapshot' => $address, 'notes' => $notes]);
                     foreach ($data['lines'] as $i => $row) {
                         if (! empty($data['direct_dispatch'])) {
                             $item = Item::with('baseUnit', 'variant')->findOrFail($row['item_id'] ?? 0);
@@ -455,8 +455,8 @@ class SalesService
             $item = $order?->item ?? Item::with('baseUnit', 'variant')->findOrFail($itemId);
             $p = $this->stock->position($line->stock_position_id, $date, true);
             $qty = $this->stock->quantity($p, $line->base_quantity);
-            if ($p->lot->item_id !== $itemId || $p->location->warehouse_id !== $header->warehouse_id || $p->location->location_type !== 'internal') {
-                G::fail('Dispatch stock must match the selected item at internal storage in the selected warehouse.');
+            if ($p->lot->item_id !== $itemId || ($header->warehouse_id && $p->location->warehouse_id !== $header->warehouse_id) || $p->location->location_type !== 'internal') {
+                G::fail('Dispatch stock must match the selected item at internal storage and any selected warehouse.');
             }
             if ($order) {
                 $before = $this->dispatched($order->id);

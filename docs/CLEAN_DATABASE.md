@@ -53,3 +53,23 @@ No routes/screens, application services or migrations changed. Documentation:
 this guide plus the project-state entry. Suggested documentation commit:
 `docs: record separate clean local database preparation`. Database preparation and
 verification are complete; the follow-up also selected the clean database locally.
+
+## Clean database 02 setup data — 2026-11-10
+
+The active local connection is now `irfan-textile-clean-02`. At the user's
+follow-up request, textile and ERP setup definitions plus the source financial
+calendar were copied from `irfan_textile` into this database. Thirty previously
+empty setup tables were populated, including units, textile categories/items and
+fabric specifications, designs/colors/variants, processing services/routes,
+warehouses/locations, document types, chart/posting accounts, payment terms and
+bank configuration. The open financial year `FY2026-2027` (2026-07-01 through
+2027-06-30) and its accounting period were added. Idempotent configuration
+seeders added default units/categories and six fresh document sequences;
+authorization-role seeders were not run.
+
+Company, users, access roles, user-role assignments and all party records remain
+as previously preserved. No stock quantity, fabric roll, stock movement,
+purchase/sales document, payment, receipt, or journal was copied. Verification
+checked 301 foreign-key relationships with no orphans and confirmed the listed
+transaction tables remain empty. The source database was read only. No migration
+was run and no schema changed.

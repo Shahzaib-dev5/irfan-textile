@@ -758,3 +758,14 @@ Relative documentation links passed validation. An intermediate print-template
 typo was corrected before the final green suite/cache checks. Exact MySQL 8.4,
 interactive browser/mobile and printed-page acceptance remain separate deployment
 requirements. No application database was migrated/reset or populated by tests.
+## Direct processed-fabric purchase follow-up (2026-11-11)
+
+- Added `DirectFabricPurchaseTest` coverage for an unpaid direct purchase and a
+  fully paid purchase with automatic open-item allocation. Follow-up coverage
+  also verifies two PCS lots on one invoice and the expandable 100-PCS Inventory total.
+- PHP syntax checks passed for the controller, request, service, routes and test.
+- Vite production build passed with 70 transformed modules.
+- `git diff --check` passed (line-ending conversion warnings only).
+- The focused PHPUnit run could not start: the available PHP CLI is 8.2.12 while
+  Composer requires PHP 8.3 or newer. No automated runtime, Blade compilation,
+  browser, or target MySQL 8.4 result is claimed for this follow-up.

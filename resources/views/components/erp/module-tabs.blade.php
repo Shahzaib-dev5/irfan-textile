@@ -26,13 +26,13 @@ $canSeeParties = $user->hasPermissionTo('purchasing.supplier.view') || $user->ha
 $subtabs = match ($activeModule) {
     'catalog' => array_merge(collect(App\Modules\Catalog\Services\CatalogWorkspace::SCREENS)->map(fn ($screen, $key) => [$screen['title'], 'catalog.index', ['master' => $key], 'catalog.index', 'catalog.masters.view'])->values()->all(), [['Collections / seasons', 'catalog.collections', [], 'catalog.collections', 'catalog.masters.view']]),
     'inventory' => [
-        ['Stock', 'inventory.index', [], 'inventory.index', 'inventory.view'], ['Stock documents', 'inventory.documents.index', [], 'inventory.documents.index', 'inventory.view'],
-        ['Stock ledger', 'inventory.movements', [], 'inventory.movements', 'inventory.view'], ['Reconciliation', 'inventory.reconciliation', [], 'inventory.reconciliation', 'inventory.view'],
+        ['Stock', 'inventory.index', [], 'inventory.index', 'inventory.view'], ['Location Transfer', 'inventory.documents.index', [], 'inventory.documents.index', 'inventory.view'],
+        ['Stock ledger', 'inventory.movements', [], 'inventory.movements', 'inventory.view'],
         ['Physical suits', 'physical-stock.index', [], 'physical-stock.index', 'inventory.view'], ['Processed fabric', 'physical-stock.fabric', [], 'physical-stock.fabric', 'inventory.view'],
         ['Add ready suits', 'physical-stock.create', [], 'physical-stock.create', 'inventory.manage'],
     ],
     'warehouses' => [['Warehouse list', 'warehouses.index', [], 'warehouses.index', 'warehouses.view'], ['Add warehouse', 'warehouses.create', [], 'warehouses.create', 'warehouses.manage']],
-    'parties' => [['Party directory', 'parties.index', [], 'parties.index', null]],
+    'parties' => [['Party directory', 'parties.index', [], 'parties.index', null], ['Party ledger', 'parties.ledger', [], 'parties.ledger', 'accounting.finance.view']],
     'purchasing' => array_merge(collect(App\Modules\Purchasing\Services\PurchasingWorkspace::PAGES)->map(fn ($page) => [$page['title'], 'purchasing.'.$page['path'].'.index', [], 'purchasing.'.$page['path'].'.index', 'purchasing.documents.view'])->values()->all(), [['Payables', 'purchasing.payables', [], 'purchasing.payables', 'purchasing.documents.view'], ['Prices & history', 'purchasing.history', [], 'purchasing.history', 'purchasing.documents.view']]),
     'processing' => [
         ['Jobs', 'processing.jobs.index', [], 'processing.jobs.index', 'processing.documents.view'], ['Fabric Out', 'processing.fabric.out', [], 'processing.fabric.out', 'processing.documents.manage'],
@@ -43,11 +43,11 @@ $subtabs = match ($activeModule) {
     ],
     'production' => [['Orders / batches', 'production.batches.index', [], 'production.batches.index', 'production.view'], ['Recipes', 'production.boms', [], 'production.boms', 'production.view'], ['Reports', 'production.reports.index', [], 'production.reports.index', 'production.view'], ['WIP progress', 'production.progress', [], 'production.progress', 'production.view']],
     'finished-goods' => [['Packing records', 'finished-goods.index', [], 'finished-goods.index', 'finished-goods.view'], ['Specifications', 'finished-goods.specifications', [], 'finished-goods.specifications', 'finished-goods.view'], ['Batches & costing', 'finished-goods.batches', [], 'finished-goods.batches', 'finished-goods.view'], ['Stock & quality', 'finished-goods.inventory', [], 'finished-goods.inventory', 'finished-goods.view']],
-    'sales' => array_merge(collect(['order' => 'Orders', 'dispatch' => 'Dispatch', 'invoice' => 'Invoices', 'return' => 'Returns', 'credit' => 'Credit notes'])->map(fn ($label, $kind) => [$label, 'sales.index', ['kind' => $kind], 'sales.index', 'sales.documents.view'])->values()->all(), [['Availability', 'sales.availability', [], 'sales.availability', 'sales.documents.view']]),
+    'sales' => array_merge(collect(['order' => 'Sale orders', 'dispatch' => 'Sale Dispatch', 'invoice' => 'Sale Invoices', 'return' => 'Sale Returns', 'credit' => 'Returns Credit notes'])->map(fn ($label, $kind) => [$label, 'sales.index', ['kind' => $kind], 'sales.index', 'sales.documents.view'])->values()->all(), [['Availability', 'sales.availability', [], 'sales.availability', 'sales.documents.view']]),
     'finance' => [
         ['Journals', 'finance.index', [], 'finance.index', 'accounting.finance.view'], ['Cash payable voucher', 'finance.create', ['kind' => 'payment'], 'finance.create', 'accounting.finance.post'],
         ['Cash receipt voucher', 'finance.create', ['kind' => 'receipt'], 'finance.create', 'accounting.finance.post'], ['Accounts & cash/bank', 'finance.accounts', [], 'finance.accounts', 'accounting.finance.view'],
-        ['Open items', 'finance.report', ['report' => 'open'], 'finance.report', 'accounting.finance.view'], ['Statements', 'finance.report', [], 'finance.report', 'accounting.finance.view'],
+        ['Unpaid bills', 'finance.report', ['report' => 'open'], 'finance.report', 'accounting.finance.view'], ['Statements', 'finance.report', [], 'finance.report', 'accounting.finance.view'],
         ['Bank reconciliation', 'finance.bank', [], 'finance.bank', 'accounting.finance.reconcile'],
     ],
     default => [],
