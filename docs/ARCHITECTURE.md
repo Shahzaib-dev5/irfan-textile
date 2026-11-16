@@ -1,5 +1,14 @@
 # Module architecture and aggregate boundaries
 
+## Party opening integration (2026-11-16)
+
+New Party's optional old unpaid section uses CreatePartyRequest and
+PartyOpeningBalance with the existing PartyManagementService and FinanceService.
+The company lock and transaction span identity/roles and opening posting. An
+existing audit event links the creation hash, party and opening document for
+replay protection; balances remain in journals/open items. No schema change.
+See [PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md).
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit

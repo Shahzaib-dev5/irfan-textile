@@ -1,5 +1,14 @@
 # Future plan: opening balances and go-live for a running company
 
+## Financial opening update (2026-11-16)
+
+The original plan below records the 2026-10-21 scope. Phase 12 subsequently
+implemented financial opening journals, payments and settlements. Authorized
+users can now also enter an old customer receivable or supplier/vendor payable
+while adding a party; see [PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md)
+and [ACCOUNTING_FINANCE.md](ACCOUNTING_FINANCE.md). That shortcut adds no schema.
+The contractor-opening custody plan below remains separate future work.
+
 Recorded: 2026-10-21 (Asia/Karachi)
 
 **Status: planning only; not implemented or approved as a database design.**

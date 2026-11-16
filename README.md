@@ -1,5 +1,13 @@
 # Textile Manufacturing ERP
 
+## Old unpaid balances on new parties (2026-11-16)
+
+**Parties > Add party** offers an optional old unpaid amount for authorized Finance
+opening users. Choose receive from Customer or pay Supplier/Vendor, then enter the
+amount, reference and dates. Saving creates the existing opening voucher and open
+item atomically; settle it later in Finance. No migration is required. See the
+[operator guide](docs/PARTY_OPENING_BALANCES.md).
+
 ## Inventory direct processed-fabric purchase (2026-11-11)
 
 Inventory availability now offers **Direct fabric purchase** for ready-to-use

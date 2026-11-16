@@ -1,5 +1,14 @@
 # Phase 12 — Accounting and finance
 
+## Party creation opening follow-up (2026-11-16)
+
+**Parties > Add party** can optionally confirm a customer's old receivable or a
+supplier/vendor's old payable through the existing Finance opening service.
+The form asks receive/pay, role, unpaid amount, evidence and dates. Creation and
+posting are atomic; later receipts/payments settle the same open item. Opening
+permission is required. No schema change or editable balance is added. See
+[PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md).
+
 ## Processing follow-up ? 2026-10-27
 
 The authorized [Fabric Out / Fabric In workflow](PROCESSING_FABRIC_FLOW.md) adds automatic

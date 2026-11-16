@@ -1,5 +1,47 @@
 # Testing and validation
 
+## New Party old unpaid balance (2026-11-16)
+
+Final focused regression: **28 tests / 257 assertions passed**, PHP 8.4.9,
+59.597 seconds, isolated `irfan_textile_phase3_test` on local MariaDB 10.4.32.
+Suites: PartyOpeningBalanceTest (9), PhaseFourPartyManagementTest (3), FinanceTest
+(16). Tests cover customer opening AR and partial receipt; supplier/vendor opening
+AP and partial payments; one selected role on multi-role identities; no-balance
+creation; exact-request replay and changed-payload rejection; invalid amounts,
+directions, references and dates; closed-period and missing-account rollback;
+Wholesale permission denial; and party editing without reposting an opening.
+
+Initial failures were corrected: test vendor profiles needed an actual processing
+service, Wholesale required its scoped setup seeder, and the closed-period fixture
+needed the existing closed status plus closed_at/closed_by. Opening descriptions
+now retain the original reference on ledger lines as well as the voucher header.
+The final run above was fully green after these changes.
+
+`node tests/Frontend/party-opening-browser.mjs` passed using rendered synthetic
+test HTML. It checks disabled default fields and payload omission, customer versus
+supplier/vendor filtering, a single eligible role being selected automatically,
+receive/pay switching, preserved amount, desktop/mobile layout and no JavaScript
+exceptions. Desktop/mobile screenshots were visually reviewed in ignored
+`storage/framework/testing/party-opening-browser/`. No live form was submitted.
+
+New PHP files and test passed Pint; changed PHP syntax checks, Blade compilation
+and cache clearing, browser-script syntax and `git diff --check` passed. No package
+or asset source changed; no Vite build was required. Tests used the explicitly
+selected `C:/php8.4/php.exe`; default shell PHP remains 8.2.12. No application-data
+posting or application schema migration was performed. Exact MySQL 8.4, concurrent
+creation stress and live operator/accountant acceptance remain unverified.
+
+Repeat with PHP 8.3+ and the existing isolated schema:
+
+```powershell
+$env:PARTY_OPENING_BROWSER_FIXTURES = '1'
+& 'C:/php8.4/php.exe' vendor/phpunit/phpunit/phpunit tests/Feature/PartyOpeningBalanceTest.php tests/Feature/PhaseFourPartyManagementTest.php tests/Feature/FinanceTest.php
+node tests/Frontend/party-opening-browser.mjs
+```
+
+Files, screens, accounting effects and deployment:
+[PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md).
+
 ## Sales list PDF/print actions (2026-11-06)
 
 Blade view compilation and `git diff --check` passed. Automated tests and

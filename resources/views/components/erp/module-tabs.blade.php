@@ -45,10 +45,13 @@ $subtabs = match ($activeModule) {
     'finished-goods' => [['Packing records', 'finished-goods.index', [], 'finished-goods.index', 'finished-goods.view'], ['Specifications', 'finished-goods.specifications', [], 'finished-goods.specifications', 'finished-goods.view'], ['Batches & costing', 'finished-goods.batches', [], 'finished-goods.batches', 'finished-goods.view'], ['Stock & quality', 'finished-goods.inventory', [], 'finished-goods.inventory', 'finished-goods.view']],
     'sales' => array_merge(collect(['order' => 'Sale orders', 'dispatch' => 'Sale Dispatch', 'invoice' => 'Sale Invoices', 'return' => 'Sale Returns', 'credit' => 'Returns Credit notes'])->map(fn ($label, $kind) => [$label, 'sales.index', ['kind' => $kind], 'sales.index', 'sales.documents.view'])->values()->all(), [['Availability', 'sales.availability', [], 'sales.availability', 'sales.documents.view']]),
     'finance' => [
-        ['Journals', 'finance.index', [], 'finance.index', 'accounting.finance.view'], ['Cash payable voucher', 'finance.create', ['kind' => 'payment'], 'finance.create', 'accounting.finance.post'],
-        ['Cash receipt voucher', 'finance.create', ['kind' => 'receipt'], 'finance.create', 'accounting.finance.post'], ['Accounts & cash/bank', 'finance.accounts', [], 'finance.accounts', 'accounting.finance.view'],
-        ['Unpaid bills', 'finance.report', ['report' => 'open'], 'finance.report', 'accounting.finance.view'], ['Statements', 'finance.report', [], 'finance.report', 'accounting.finance.view'],
-        ['Bank reconciliation', 'finance.bank', [], 'finance.bank', 'accounting.finance.reconcile'],
+        ['General ledger statement', 'finance.report', ['report' => 'ledger'], 'finance.report', 'accounting.finance.view'], ['Cash payable voucher', 'finance.create', ['kind' => 'payment'], 'finance.create', 'accounting.finance.post'],
+        ['Cash receipt voucher', 'finance.create', ['kind' => 'receipt'], 'finance.create', 'accounting.finance.post'],
+        ['Old unpaid balances', 'finance.create', ['kind' => 'opening'], 'finance.create', 'accounting.finance.opening'],
+        ['Accounts & cash/bank', 'finance.accounts', [], 'finance.accounts', 'accounting.finance.view'],
+        ['Unpaid bills', 'finance.report', ['report' => 'open'], 'finance.report', 'accounting.finance.view'],
+        // ['Bank reconciliation', 'finance.bank', [], 'finance.bank', 'accounting.finance.reconcile'],
+        ['General ledger journal', 'finance.index', [], 'finance.index', 'accounting.finance.view'],
     ],
     default => [],
 };

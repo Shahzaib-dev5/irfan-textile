@@ -1,5 +1,13 @@
 # Business rules and integrity contracts
 
+## Old unpaid balance on New Party (2026-11-16)
+
+Optional opening amounts require Finance opening permission, an assigned business
+role, positive amount, evidence and due date. Receive uses customer AR; pay uses
+supplier/vendor AP. Party and posted opening commit together, with exact-request
+replay protection. Amounts remain journal-derived and settle through Finance.
+See [PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md). No schema change.
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit

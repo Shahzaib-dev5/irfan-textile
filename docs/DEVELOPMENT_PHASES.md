@@ -1,5 +1,12 @@
 # Development phases
 
+## Authorized Phase 12 UX follow-up (2026-11-16)
+
+Added optional old unpaid balance entry during New Party creation. Existing
+Finance opening services and immutable open items are reused with atomic party
+creation and permission checks. No new phase or schema migration. See
+[PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md) and TESTING.md.
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit

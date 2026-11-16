@@ -1,5 +1,12 @@
 # Project overview
 
+## New Party old unpaid entry (2026-11-16)
+
+Parties > Add party optionally records existing customer dues or supplier/vendor
+obligations through the existing opening-voucher workflow. Authorized opening
+users enter receive/pay, amount, reference and dates; Finance handles settlement.
+No schema change. See [PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md).
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit

@@ -1,5 +1,14 @@
 # Deployment
 
+## New Party old unpaid entry (2026-11-16)
+
+Deploy the Party request/service/controller and Blade changes, then refresh cached
+views if used. No migration, seeder or new permission is needed. Finance opening
+document configuration, posting-purpose accounts and an open financial calendar
+must already exist. Verify as an authorized opening user and as Wholesale; use
+the isolated test database for posting checks. See
+[PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md).
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit

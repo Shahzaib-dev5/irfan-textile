@@ -10,10 +10,12 @@ use App\Models\PaymentTerm;
 use App\Models\ProcessingService;
 use App\Models\Unit;
 use App\Models\VendorService;
+use App\Modules\Accounting\Services\FinanceReports;
+use App\Modules\Parties\Http\Requests\CreatePartyRequest;
 use App\Modules\Parties\Http\Requests\PublishVendorRateRequest;
 use App\Modules\Parties\Http\Requests\SavePartyRequest;
 use App\Modules\Parties\Services\PartyManagementService;
-use App\Modules\Accounting\Services\FinanceReports;
+use App\Modules\Parties\Services\PartyOpeningBalance;
 use App\Modules\Inventory\Services\InventoryGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -68,20 +70,31 @@ class PartyManagementController extends Controller
         return $this->partyForm($party, $request->user());
     }
 
-    public function partyStore(Request $request, PartyManagementService $service): RedirectResponse
+    public function partyStore(CreatePartyRequest $request, PartyManagementService $service, PartyOpeningBalance $openings): RedirectResponse
     {
         $data = $request->all();
         $roles = $this->allowedSelectedRoles($request, $data['roles'] ?? []);
         abort_if($roles->isEmpty(), 422, 'Select at least one business role you are allowed to manage.');
-        $validated = $this->validatePartyPayload($request, $roles, false);
-        $party = null;
-        DB::transaction(function () use ($roles, $validated, $service, $request, &$party): void {
+        $opening = $request->validated('opening') ?? [];
+        $payload = $request->only(['party', 'roles', 'profiles', 'contacts', 'addresses', 'opening']);
+        DB::transaction(function () use ($roles, $service, $request, $openings, $opening, $payload): void {
+            if (in_array($opening['direction'] ?? null, ['receive', 'pay'], true)) {
+                InventoryGuard::company();
+            }
+            if ($openings->replay($opening, $payload, $request->user())) {
+                return;
+            }
+            $validated = $this->validatePartyPayload($request, $roles, false);
+            $party = null;
             foreach ($roles as $index => $role) {
                 if ($index > 0) $validated[$role]['_preserve_party_identity'] = true;
                 $party = $service->save($role, $validated[$role], $party, $request->user());
             }
+            $openings->post($party, $opening, $payload, $request->user());
         }, 3);
-        return to_route('parties.index')->with('status', 'Party created with selected business roles.');
+        return to_route('parties.index')->with('status', in_array($opening['direction'] ?? null, ['receive', 'pay'], true)
+            ? 'Party created with its old unpaid balance. Use Finance to receive or pay against the opening item.'
+            : 'Party created with selected business roles.');
     }
 
     public function quickCustomer(Request $request, PartyManagementService $service): JsonResponse
@@ -110,6 +123,7 @@ class PartyManagementController extends Controller
 
     public function partyUpdate(Request $request, Party $party, PartyManagementService $service): RedirectResponse
     {
+        $request->validate(['opening' => 'prohibited']);
         $party->load('roles.type');
         $selected = collect($request->input('roles', []))->filter(fn ($role) => in_array($role, ['supplier','vendor','customer'], true))->unique()->values();
         $existing = $party->roles->map(fn ($role) => $role->type->code)->filter(fn ($role) => in_array($role, ['supplier','vendor','customer'], true));

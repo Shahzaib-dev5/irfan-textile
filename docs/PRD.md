@@ -1,5 +1,13 @@
 # Product requirements
 
+## Approved New Party opening shortcut (2026-11-16)
+
+Authorized users may supply an old unpaid amount while adding a shared party:
+receive from Customer or pay Supplier/Vendor, reference, opening date and due date.
+Saving confirms an opening voucher; subsequent Finance payments/receipts settle
+it. The optional shortcut has no independent editable balance or schema change.
+See [PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md).
+
 ## Physical Suit Stock follow-up (2026-10-28)
 
 The authorized [Physical Suit Stock workflow](PHYSICAL_SUIT_STOCK.md) simplifies ready-suit

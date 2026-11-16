@@ -1,5 +1,22 @@
 # Project state and phase completion reports
 
+## New Party old unpaid balance (2026-11-16)
+
+The authorized New Party follow-up adds an optional receive/pay opening section
+to `/parties/create`. Customer receivables and supplier/vendor payables use the
+configured party control and opening equity accounts through FinanceService.
+The existing POST `/parties` now creates the identity, selected roles/profiles
+and opening voucher atomically, with replay protection and existing permissions.
+Party editing rejects opening submissions; existing Finance settlement and
+reversal workflows remain authoritative. No schema, migration, package or new
+route is added. Files, operator steps, known limits and suggested commit are in
+[PARTY_OPENING_BALANCES.md](PARTY_OPENING_BALANCES.md); actual verification is in
+[TESTING.md](TESTING.md). Final focused tests passed 28 / 257 assertions on PHP
+8.4.9 with the isolated MariaDB schema; the fixture-based desktop/mobile browser
+check, PHP syntax, new-file Pint, Blade compilation and diff checks passed.
+No live application data was posted or migrated. Exact MySQL 8.4 and live
+operator/accountant acceptance remain pending. Ready for operator review.
+
 ## Inventory direct processed-fabric purchase (2026-11-11)
 
 Added **Direct fabric purchase** to Inventory availability for authorized Purchasing

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-16
+
+- Added optional old unpaid balance entry to Parties > Add party, with plain
+  receive/pay wording, selected customer/supplier/vendor role, amount and evidence.
+- Reused Finance opening posting atomically with party creation, including
+  request replay protection, period validation and immutable open items.
+- Preserved separate opening permission and Finance receipt/payment settlement;
+  party editing cannot repost an opening. No schema migration.
+
 ## 2026-11-11
 
 - Added an Inventory-stock entry point for direct purchases of ready processed fabric.

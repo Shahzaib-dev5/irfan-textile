@@ -55,6 +55,12 @@
             @endforeach
             </div>
         </section>
+        @if(!$party->exists && auth()->user()->hasPermissionTo('accounting.finance.opening'))
+            <x-erp.party-opening-balance :roles="$manageableRoles" />
+        @endif
+        @if($party->exists && auth()->user()->hasPermissionTo('accounting.finance.opening'))
+            <p class="text-sm text-slate-500">Old unpaid balances are posted separately. Review or add them in <a class="text-brand underline" href="{{ route('finance.create', ['kind' => 'opening']) }}">Finance → Old unpaid balances</a>. Editing a party does not change its posted balance.</p>
+        @endif
         <div class="flex justify-end gap-3"><a href="{{ route('parties.index') }}" class="rounded-lg border border-line px-4 py-2.5 text-sm">Cancel</a><button class="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white">Save party</button></div>
     </form>
 </div>
