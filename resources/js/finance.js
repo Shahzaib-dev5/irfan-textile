@@ -21,8 +21,9 @@ export function financeGuide(data) {
                 this.mode = 'settlement';
             }
             this.chooseRole(false);
-            this.bank = String(old.bank_account_id || '');
-            this.method = old.method || 'bank_transfer';
+            const cashbox = String(data.defaultCashbox ?? '');
+            this.bank = String(old.bank_account_id ?? (old.method && old.method !== 'cash' ? '' : cashbox));
+            this.method = old.method || (this.banks.find(b => b.id === this.bank)?.kind === 'cash' ? 'cash' : 'bank_transfer');
             this.amount = old.amount || '';
             this.bill = String(old.apply_to_open_item_id || (allocation ? (this.customer ? allocation.debit_open_item_id : allocation.credit_open_item_id) : '') || '');
             this.credit = String((allocation ? (this.customer ? allocation.credit_open_item_id : allocation.debit_open_item_id) : '') || '');
@@ -49,6 +50,11 @@ export function financeGuide(data) {
         switchMode() { this.clearSelection(); },
         chooseBank() {
             this.method = this.banks.find(b => b.id === this.bank)?.kind === 'cash' ? 'cash' : 'bank_transfer';
+        },
+        chooseMethod() {
+            const bank = this.banks.find(b => b.id === this.bank);
+            if (this.method === 'cash' && bank?.kind !== 'cash') this.bank = String(data.defaultCashbox ?? '');
+            if (this.method !== 'cash' && bank?.kind === 'cash') this.bank = '';
         },
         suggest() {
             const target = this.selectedBill;

@@ -50,7 +50,7 @@
                 <input type="hidden" name="settlement_account_id" :value="account">
                 <label x-text="moneyKind === 'payment' ? 'Pay from this cash / bank account' : 'Receive into this cash / bank account'"></label><div></div>
                 <label>Cash / bank<select name="bank_account_id" x-model="bank" @change="chooseBank()" required><option value="">Choose account</option>@foreach($banks as $b)<option value="{{ $b->id }}">{{ $b->name }} ({{ $b->account_kind }})</option>@endforeach</select></label>
-                <label>Method<select name="method" x-model="method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="cheque">Cheque</option><option value="other">Other</option></select></label>
+                <label>Method<select name="method" x-model="method" @change="chooseMethod()"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="cheque">Cheque</option><option value="other">Other</option></select></label>
                 @if($banks->isEmpty())<p class="md:col-span-2 text-sm">No cash / bank account configured. <a class="text-brand" href="{{ route('finance.accounts') }}">Set up your actual cash box or bank account</a> first.</p>@endif
                 <label>Total money <span x-text="moneyKind === 'payment' ? 'paid' : 'received'"></span> (PKR)<input name="amount" type="number" min="0.0001" step="0.0001" x-model="amount" @input="suggest()" required></label>
                 <label x-text="normalFlow ? 'Bill / invoice to pay against' : 'Existing item to refund'"></label>

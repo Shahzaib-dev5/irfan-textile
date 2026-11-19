@@ -12,6 +12,7 @@ use App\Models\StockLot;
 use App\Models\StockMovement;
 use App\Models\StockPosition;
 use App\Models\StockReservation;
+use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
 use App\Modules\Inventory\Http\Requests\DirectFabricPurchaseRequest;
@@ -20,6 +21,7 @@ use App\Modules\Inventory\Http\Requests\SaveInventoryRequest;
 use App\Modules\Inventory\Services\DirectFabricPurchase;
 use App\Modules\Inventory\Services\InventoryInquiry;
 use App\Modules\Inventory\Services\InventoryService;
+use App\Modules\Inventory\Services\PurchaseMeasurement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -40,9 +42,9 @@ class InventoryController extends Controller
     public function directFabricPurchase(Request $request)
     {
         abort_unless($request->user()->hasPermissionTo('purchasing.documents.manage')
-            && $request->user()->hasPermissionTo('purchasing.receipts.post')
-            && $request->user()->hasPermissionTo('purchasing.bills.post'), 403);
-        $items = Item::with('baseUnit')->whereIn('item_type', ['processed_fabric', 'trim'])->where('is_stocked', true)->where('is_active', true)->whereHas('baseUnit', fn ($q) => $q->whereIn('code', ['M', 'PCS']))->orderBy('sku')->get();
+            && $request->user()->hasPermissionTo('purchasing.receipts.post'), 403);
+        $items = Item::with('baseUnit', 'textileDefinition')->whereIn('item_type', PurchaseMeasurement::TYPES)->where('is_stocked', true)->where('is_active', true)->orderBy('id')->get()->unique(fn ($item) => $item->textile_definition_id ? 'definition-'.$item->textile_definition_id : 'item-'.$item->id)->values();
+        $units = Unit::where('is_active', true)->where('dimension', '<>', 'service')->whereNotIn('code', ['SUIT', 'PACK', 'ROLL'])->orderBy('name')->get();
         $suppliers = PartyRole::with('party')->where('is_active', true)->whereHas('type', fn ($q) => $q->where('code', 'supplier'))->whereHas('supplierProfile')->get()->sortBy('party.legal_name');
         $locations = WarehouseLocation::with('warehouse')->where('is_active', true)->whereIn('location_type', ['internal', 'quarantine'])->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get();
         $categories = ItemCategory::where('is_active', true)->orderBy('name')->get();
@@ -51,14 +53,14 @@ class InventoryController extends Controller
             : collect();
         $key = (string) Str::uuid();
 
-        return view('module.inventory::direct-fabric-purchase', compact('items', 'suppliers', 'locations', 'categories', 'banks', 'key'));
+        return view('module.inventory::direct-fabric-purchase', compact('items', 'suppliers', 'locations', 'categories', 'banks', 'key', 'units'));
     }
 
     public function storeDirectFabricPurchase(DirectFabricPurchaseRequest $request, DirectFabricPurchase $service)
     {
         $result = $service->confirm($request->user()->id, $request->validated());
 
-        return redirect()->route('purchasing.show', $result['bill'])->with('status', 'Direct fabric purchase confirmed. Stock and supplier ledger were updated'.($result['payment'] ? ', and the payment was allocated.' : '.'));
+        return redirect()->route('purchasing.show', $result['bill'] ?? $result['receipt'])->with('status', $result['bill'] ? 'Direct purchase confirmed. Stock and supplier bill posted'.($result['payment'] ? ', and payment allocated.' : '.') : 'Stock received. Bill pending: use Create supplier bill when the invoice arrives.');
     }
 
     public function documents(Request $request)
@@ -77,6 +79,7 @@ class InventoryController extends Controller
             abort_unless($document->type->module_code === 'inventory', 404);
         }
         $kind = $document->exists ? ($document->transfer ? 'transfer' : 'adjustment') : ($request->query('kind') === 'transfer' ? 'transfer' : 'adjustment');
+        abort_if($kind === 'transfer' && ! $request->user()->hasPermissionTo('inventory.post'), 403);
         $items = Item::with('baseUnit')->where('is_stocked', true)->where('is_active', true)->orderBy('sku')->get();
         $locations = WarehouseLocation::with('warehouse')->where('is_active', true)->orderBy('warehouse_id')->orderBy('code')->get();
         $positions = StockPosition::with(['lot.item.baseUnit', 'roll', 'location.warehouse'])->orderBy('id')->get();
@@ -87,9 +90,12 @@ class InventoryController extends Controller
     public function save(SaveInventoryRequest $request, InventoryService $service, ?Document $document = null)
     {
         $this->authorize($document?->exists ? 'update' : 'create', $document?->exists ? $document : Document::class);
-        $saved = $service->save($request->user()->id, $request->validated(), $document?->id);
+        $transfer = $request->validated('kind') === 'transfer';
+        $saved = $transfer
+            ? $service->confirmTransfer($request->user()->id, $request->validated(), $document?->id)
+            : $service->save($request->user()->id, $request->validated(), $document?->id);
 
-        return redirect()->route('inventory.documents.show', $saved)->with('status', 'Draft saved. Stock changes only when posted.');
+        return redirect()->route('inventory.documents.show', $saved)->with('status', $transfer ? 'Warehouse transfer confirmed. Stock has moved.' : 'Draft saved. Stock changes only when posted.');
     }
 
     public function show(Document $document)
@@ -97,6 +103,9 @@ class InventoryController extends Controller
         abort_unless($document->type->module_code === 'inventory', 404);
         $this->authorize('viewAny', Document::class);
         $document->load(['type', 'adjustment.lines.position.lot.item', 'adjustment.lines.position.location', 'transfer.lines.source.lot.item', 'transfer.lines.source.location', 'transfer.lines.destination.location', 'movements.position.lot.item', 'movements.position.location', 'events', 'journal.lines.account']);
+        if ($document->type->code === 'fabric_cutting') {
+            return redirect()->route('processing.cutting.show', $document);
+        }
         $reservations = StockReservation::where('document_id', $document->id)->get();
 
         return view('module.inventory::show', compact('document', 'reservations'));

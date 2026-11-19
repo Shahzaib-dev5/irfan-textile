@@ -1,5 +1,24 @@
 # Phase 5 textile master data
 
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+## Direct purchase measurement follow-up (2026-11-17)
+
+Direct purchase now creates missing fabric/material definitions inline, selects
+actual receipt units (fabric M/PCS/SET/THAAN), and permits an invoice-free GRN
+followed by a matched supplier bill. Shared definitions retain separate stock
+identities per unit; optional thaan/set/meter totals are original receipt evidence,
+not additional stock balances. One additive migration is applied locally; existing
+stock units and posted costs are preserved. This supersedes earlier M-only/PCS-only
+purchase guidance. Details and limits: [Direct purchase measurements](DIRECT_PURCHASE_MEASUREMENTS.md).
+
 ## Processing follow-up ? 2026-10-27
 
 The authorized [Fabric Out / Fabric In workflow](PROCESSING_FABRIC_FLOW.md) adds automatic
@@ -25,7 +44,8 @@ The seven item classifications remain unchanged. Finished product items now allo
 whole SUIT (an individual design/color variant) or whole PACK (a separate packed
 assortment SKU). PACK is configured by Finished Goods setup. Only SUIT items may
 have product_variants; PACK contents belong to published packing specifications.
-No generic PACK/SUIT unit conversion is allowed, and fabric stays measured in M.
+No generic PACK/SUIT unit conversion is allowed. Grey fabric uses M; processed
+fabric may use M or whole PCS (2026-11-16 catalog follow-up).
 Published pack content protects component/pack SKU measurement identity and suit
 variant design/color/configuration. See FINISHED_GOODS_COSTING.md.
 
@@ -53,7 +73,7 @@ its original implementation; current regression evidence is in TESTING.md.
 ## Approved schema mappings
 
 - Raw grey/kora and processed fabric are `items` with types `grey_fabric` and
-  `processed_fabric`. Their physical base unit is M and they require a typed
+  `processed_fabric`. Grey uses M; processed uses M or whole PCS. Both require a typed
   `fabric_specifications` row. Width is millimeters and GSM is descriptive;
   neither is an inventory quantity.
 - Materials and consumables use `trim` with configurable categories (including

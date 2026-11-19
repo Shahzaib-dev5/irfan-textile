@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { financeGuide } from '../../resources/js/finance.js';
 
-const fixture = (kind = 'payment', old = {}) => financeGuide({kind, old,
+const fixture = (kind = 'payment', old = {}) => financeGuide({kind, old, defaultCashbox: 1,
     roles: [{id:'1',customer:false},{id:'2',customer:false},{id:'3',customer:true}],
     accounts: [{id:'21',customer:false},{id:'12',customer:true}],
     banks: [{id:'1',kind:'cash'},{id:'2',kind:'bank'}],
@@ -39,4 +39,22 @@ test('customer receipts and refunds choose the correct side; validation restores
     assert.deepEqual(refund.targets.map(i=>i.id),['14']);
     const restored=fixture('settlement',{allocations:[{debit_open_item_id:13,credit_open_item_id:14,amount:'100'}]});
     restored.init(); assert.equal(restored.role,'3'); assert.equal(restored.bill,'13'); assert.equal(restored.credit,'14'); assert.equal(restored.applied,'100');
+});
+
+test('new payments default to cash and a bank choice survives validation', () => {
+    const fresh = fixture();
+    fresh.init();
+    assert.equal(fresh.bank, '1');
+    assert.equal(fresh.method, 'cash');
+    fresh.method = 'bank_transfer';
+    fresh.chooseMethod();
+    assert.equal(fresh.bank, '');
+    fresh.method = 'cash';
+    fresh.chooseMethod();
+    assert.equal(fresh.bank, '1');
+
+    const restored = fixture('payment', {bank_account_id: 2, method: 'cheque'});
+    restored.init();
+    assert.equal(restored.bank, '2');
+    assert.equal(restored.method, 'cheque');
 });

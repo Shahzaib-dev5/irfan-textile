@@ -10,7 +10,7 @@
 ['company','Company profile','Company name, address and business settings.','core.company.edit','core.company.view'],
 ['calendar','Open financial calendar','An open year and period must cover your document date.','accounting.calendar.index','accounting.calendar.view'],
 ['vendors','Vendor service and rate','Add an active vendor, assign the service and publish a covering PKR rate.','vendor.index','processing.vendor.view'],
-['locations','Contractor storage','Add an active contractor location linked to the correct vendor.','warehouses.index','warehouses.view'],
+['locations','Warehouses','Add a warehouse. Vendor custody is created automatically on dispatch.','warehouses.index','warehouses.view'],
 ['stock','Released fabric in your warehouse','Receive or open actual stock, inspect it and release its quality before dispatch.','inventory.index','inventory.view']
 ] as [$key,$label,$help,$target,$permission])<div class="flex gap-3 rounded-xl border border-line p-4"><span class="mt-1 h-fit rounded-full px-2 py-1 text-xs {{ $checks[$key]?'bg-emerald-50 text-brand':'bg-amber-50 text-amber-800' }}">{{ $checks[$key]?'Ready':'Check setup' }}</span><div class="flex-1"><p class="font-medium">{{ $label }}</p><p class="mt-1 text-xs leading-5 text-slate-500">{{ $help }}</p>@if(auth()->user()->hasPermissionTo($permission))<a href="{{ route($target) }}" class="mt-2 inline-block text-xs font-medium text-brand">Open {{ strtolower($label) }} &rarr;</a>@else<p class="mt-2 text-xs text-slate-400">Ask a colleague with setup access.</p>@endif</div></div>@endforeach
 </div></section>

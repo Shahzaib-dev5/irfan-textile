@@ -1,5 +1,54 @@
 # Deployment
 
+## Local fresh start (2026-11-19)
+
+The user-authorized local `irfan_textile` reset has been applied after backup `storage/app/private/before-fresh-start-20261119.sql` (453034 bytes). No migration or production change. Sessions were cleared, so users sign in again. Do not rerun the reset. See [fresh start reset](FRESH_START_RESET.md).
+
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+Local activation: `2026_11_18_000001_add_fabric_conversion_and_receipt_rates`
+applied successfully (batch 15). Private backup:
+`storage/app/private/before-fabric-conversion-20261118.sql`, 359740 bytes.
+Historical processing hashes and operational row counts were verified unchanged;
+views were cleared and frontend assets rebuilt. No seed/reset is needed for this
+follow-up. Use an approved backup for recovery; the history migration is forward-only.
+
+Processing rate follow-up (2026-11-18): Fabric Out and direct vendor handover
+record the actual agreed rate per dispatch without a published contract. Historical
+job rates remain frozen; advanced contracts are retained. See [dispatch-agreed
+rates](DISPATCH_AGREED_RATES.md) for the nullable-FK migration and limits.
+
+## Direct purchase measurement follow-up (2026-11-17)
+
+Direct purchase now creates missing fabric/material definitions inline, selects
+actual receipt units (fabric M/PCS/SET/THAAN), and permits an invoice-free GRN
+followed by a matched supplier bill. Shared definitions retain separate stock
+identities per unit; optional thaan/set/meter totals are original receipt evidence,
+not additional stock balances. One additive migration is applied locally; existing
+stock units and posted costs are preserved. This supersedes earlier M-only/PCS-only
+purchase guidance. Details and limits: [Direct purchase measurements](DIRECT_PURCHASE_MEASUREMENTS.md).
+
+Catalog follow-up (2026-11-17): processed fabric supports M or whole PCS, with
+roll tracking restricted to M and existing identity locks preserved. No schema
+or data migration; rebuild frontend assets. Processing M-to-PCS returns remain
+outside this catalog change. See [measurement rules](TEXTILE_MASTER_UX.md).
+
+## Main Warehouse follow-up (2026-11-16)
+
+Clarification: multiple warehouses are supported. Only internal location/rack
+setup is removed. Each warehouse provisions its hidden stock storage automatically;
+receipts and transfers select warehouse names directly. Vendor custody and held
+quality remain tracked. No schema migration or additional data reset is needed.
+The earlier dummy reset has a private recovery backup. Current behavior is in
+[Main Warehouse implementation and reset scope](MAIN_WAREHOUSE.md).
+
 ## New Party old unpaid entry (2026-11-16)
 
 Deploy the Party request/service/controller and Blade changes, then refresh cached

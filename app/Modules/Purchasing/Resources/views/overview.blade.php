@@ -9,7 +9,7 @@
 @foreach([
 ['Shared supplier','Add the Supplier role to an existing party, or create the party once. Configure its contact details and payment terms.','supplier.index','purchasing.supplier.view'],
 ['Textile items and units','Create actual stock-managed Textile Items. Use meters for fabric, and compatible item-specific conversions for other order units.','catalog.index','catalog.masters.view'],
-['Warehouse and receiving location','Create an active warehouse and internal/quarantine locations within it. Receipts need a real storage location.','warehouses.index','warehouses.view'],
+['Warehouses','Add warehouses; receiving screens select them without internal locations.','warehouses.index','warehouses.view'],
 ['Open financial calendar','An open financial year and accounting period must cover the document date. Future accounting dates cannot be posted.','accounting.calendar.index','accounting.calendar.view']
 ] as [$label,$help,$target,$permission])<div class="rounded-xl border border-line p-4"><h3 class="font-semibold">{{ $label }}</h3><p class="mt-2 text-sm leading-6 text-slate-500">{{ $help }}</p>@if(auth()->user()->hasPermissionTo($permission))<a class="mt-3 inline-block text-sm text-brand" href="{{ $target==='catalog.index'?route($target,['master'=>'items']):route($target) }}">Open setup &rarr;</a>@else<p class="mt-3 text-xs text-slate-400">Ask a colleague with setup access.</p>@endif</div>@endforeach
 </div></section>

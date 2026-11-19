@@ -42,7 +42,7 @@ class InventoryService
     private function inventoryDocument(int $id): Document
     {
         $document = Document::with('type')->lockForUpdate()->findOrFail($id);
-        abort_unless($document->type->module_code === 'inventory', 404);
+        abort_unless($document->type->module_code === 'inventory' && $document->type->code !== 'fabric_cutting', 404);
 
         return $document;
     }
@@ -87,6 +87,20 @@ class InventoryService
         }
 
         return (int) $id;
+    }
+
+    public function confirmTransfer(int $actor, array $input, ?int $documentId = null): Document
+    {
+        return $this->transaction($actor, 'inventory.post', function () use ($actor, $input, $documentId) {
+            if (($input['kind'] ?? null) !== 'transfer') {
+                InventoryGuard::fail('This action confirms warehouse transfers only.');
+            }
+            // Saving and posting share the company lock and outer transaction. A
+            // failed post leaves no draft, destination position or partial movement.
+            $document = $this->save($actor, $input, $documentId);
+
+            return $this->post($actor, $document->id, $input['idempotency_key'], $document->lock_version);
+        });
     }
 
     public function save(int $actor, array $input, ?int $documentId = null): Document

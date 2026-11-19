@@ -3,18 +3,32 @@
 namespace App\Modules\Processing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Document;
 use App\Models\ProcessingDispatchLine;
 use App\Models\ProcessingFabricFlow;
 use App\Models\StockPosition;
+use App\Models\Unit;
 use App\Models\VendorService;
 use App\Models\WarehouseLocation;
 use App\Modules\Processing\Http\Requests\FabricFlowRequest;
 use App\Modules\Processing\Services\FabricFlowService;
 use App\Modules\Processing\Services\ProcessingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FabricFlowController extends Controller
 {
+    public function cutting(Document $document)
+    {
+        abort_unless($document->type->code === 'fabric_cutting', 404);
+        $cutting = DB::table('fabric_cuttings')->where('document_id', $document->id)->first();
+        abort_unless($cutting, 404);
+        $source = StockPosition::with('lot.item', 'location.warehouse')->findOrFail($cutting->source_stock_position_id);
+        $output = StockPosition::with('lot.item')->findOrFail($cutting->output_stock_position_id);
+
+        return view('module.processing::cutting', compact('document', 'cutting', 'source', 'output'));
+    }
+
     public function form(Request $request, ProcessingService $processing, ?ProcessingFabricFlow $flow = null)
     {
         $this->authorize('processing.create');
@@ -25,7 +39,7 @@ class FabricFlowController extends Controller
             return redirect()->route('processing.show', $flow->document_id);
         }
         $values = $flow?->details ?? [];
-        $capabilities = VendorService::with('vendor.role.party', 'processingService.billingUnit', 'rates')->where('is_active', true)->whereHas('processingService', fn ($q) => $q->where('is_active', true))->whereHas('vendor.role', fn ($q) => $q->where('is_active', true)->whereHas('party', fn ($q) => $q->where('is_active', true)))->get();
+        $capabilities = VendorService::with('vendor.role.party', 'processingService.billingUnit')->where('is_active', true)->whereHas('processingService', fn ($q) => $q->where('is_active', true))->whereHas('vendor.role', fn ($q) => $q->where('is_active', true)->whereHas('party', fn ($q) => $q->where('is_active', true)))->get();
         $vendors = $capabilities->map(fn ($c) => $c->vendor->role)->unique('id');
         $locations = WarehouseLocation::with('warehouse')->where('is_active', true)->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->get();
         $stock = StockPosition::with('lot.item.baseUnit', 'roll', 'location.warehouse', 'balance')->whereHas('balance', fn ($q) => $q->whereRaw('on_hand_quantity > reserved_quantity'))->whereHas('location', fn ($q) => $q->where('location_type', 'internal')->where('is_active', true))->whereHas('lot', fn ($q) => $q->where('quality_status', 'released')->whereHas('item', fn ($q) => $q->whereIn('item_type', ['grey_fabric', 'processed_fabric'])->where('is_active', true)))->get();
@@ -45,7 +59,9 @@ class FabricFlowController extends Controller
             }
         }
 
-        return view('module.processing::fabric-form', compact('kind', 'flow', 'values', 'capabilities', 'vendors', 'locations', 'stock', 'dispatchLines', 'selectedLine', 'processing'));
+        $billingUnits = Unit::where('is_active', true)->whereIn('code', ['M', 'PCS', 'SUIT', 'SET', 'THAAN'])->get();
+
+        return view('module.processing::fabric-form', compact('kind', 'flow', 'values', 'capabilities', 'vendors', 'locations', 'stock', 'dispatchLines', 'selectedLine', 'processing', 'billingUnits'));
     }
 
     public function store(FabricFlowRequest $request, FabricFlowService $service)

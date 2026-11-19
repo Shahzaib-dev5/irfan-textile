@@ -1,60 +1,52 @@
 # Simple Fabric Out / Fabric In and direct vendor handover
 
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
 User-authorized Processing follow-up, 2026-10-27. This extends the implemented
 Processing workflow after Phase 12; it does not start another business phase.
 
 ## Operator guide
 
-1. Keep shared Vendors & rates. Assign the required service and publish a dated
-   PKR contract. For new embroidery work use **Embroidery (per suit)** and SUIT.
-   Existing PCS embroidery contracts and their history are not converted.
-2. Open **Fabric Out**. Choose vendor, one of their services, agreed rate, vendor
-   location, available fabric/lot/roll and actual stock-unit quantity. Enter fabric
-   type, color/shade, component (dupatta, shirt, suit, etc.) and design as relevant.
-   Confirm creates the expected processed-fabric identity and supporting one-stage
-   route/job automatically, then posts the dispatch in the same transaction.
-   Vendor location may be left blank. The system reuses the vendor's active custody
-   location or creates a warehouse named `<Vendor> — Vendor custody` with one
-   `Vendor-held fabric` contractor location automatically.
-3. Open **Fabric In**, select the outstanding vendor/dispatch line and record actual
-   quantity closed, returned physical quantity, losses, laat reference, component
-   count and inspected billing quantity. Accepted output uses the frozen expected
-   item automatically. Unchanged rejected returns retain the original input item
-   and cannot incur processing charges or loss.
-4. Choose **Our warehouse** and an actual receiving location, or **Directly to
-   another vendor** and their service, rate and contractor location. Direct handover
-   requires accepted, inspected and released output and a different vendor. Confirm
-   after that vendor receives the fabric. A smaller receipt transfers only that
-   portion; the rest stays with the first vendor.
-5. The direct handover records the processed output at the original vendor's
-   contractor location and immediately dispatches it to the next vendor inside one
-   atomic transaction. No internal warehouse movement occurs. Output at the first
-   vendor is zero after confirmation; the next dispatch owns the new custody layer.
-6. Receive from the calender/press vendor using the same Fabric In screen. This may
-   go to the warehouse or another vendor. Sequence is selected for each transaction.
-7. Use the existing matched Vendor bills and Accounting & finance payments. Every
-   service accrues once on receipt; its bill clears that accrual to the party payable.
-   Existing PDFs include the new fabric/laat descriptions and onward document link.
+1. Assign the vendor's required processing services. Published rates are optional
+   legacy contracts; new Fabric Out entries can leave rates pending.
+2. Open Fabric Out. Choose vendor/service, available fabric and quantity. Optionally
+   cut warehouse meter stock into actual PCS before sending; consumed meters,
+   retained meters, losses and evidence must reconcile. Confirm creates the output
+   identity, route/job and dispatch atomically, including cutting when selected.
+   Vendor custody is provisioned automatically within existing warehouse storage.
+3. Open Fabric In against an outstanding dispatch. Record source quantity closed,
+   actual returned stock unit/quantity, losses, laat and inspection evidence. For
+   M-to-PCS returns, separately record retained meters. Unreceived source quantity
+   remains with the vendor. Rejected returns retain the original item and unit.
+4. Enter the actual rate and billing unit. Each receipt freezes its own pricing;
+   a pending dispatch rate must be finalized here. Billable quantity is automatic
+   when it uses the returned stock unit, otherwise enter inspected billing evidence.
+5. Choose a warehouse or direct handover to another vendor. Handover requires
+   accepted and released output; the new dispatch can also have a pending rate.
+   Both documents post in one transaction, with no internal warehouse movement.
+6. Vendor bills match the receipt's frozen accrual; Finance payments settle its
+   payable. Bills never add stock or accrue the same service a second time.
 
 ## Units and identities
 
-Physical stock retains the source fabric's base unit (normally meters). A roll is
-selected by its recorded identity and measured stock quantity; no universal roll
-length is invented. Tracked rolls must still be dispatched whole.
+M-to-whole-PCS conversion is now supported explicitly; see
+[FABRIC_CONVERSION.md](FABRIC_CONVERSION.md) for field examples and database impact.
+Other unchanged stock units retain their original meaning. No universal roll length,
+meter-to-piece or component-to-suit factor is invented. Tracked meter rolls must be
+issued/cut whole. Component/laat counts describe inspection; assembly of complete
+suits remains in Production.
 
-Laat is a batch reference, not a unit conversion. A receipt can record 34 or 66
-dupattas without calling them complete suits. Component count is inspection evidence
-on the receipt, not a second editable stock balance. For example 66 returned
-components and an explicitly agreed 22 billable suits at PKR 500 accrue PKR 11,000.
-No component-to-suit ratio is inferred. Actual physical quantities must reconcile
-separately. Assembly and cross-dimension manufacturing remain in Production.
-
-Derived output SKUs distinguish source identity, service, fabric type, color,
-component and design. They retain base unit, roll tracking, fabric specification
-and configured alternate-unit conversions. Source items are never reclassified.
-Later processing preserves source genealogy and descriptions. Receipt descriptions
-cannot silently substitute a different agreed identity. A service result is
-processed fabric; it does not become a finished suit automatically.
+Derived output identities distinguish source, service, fabric type, color, component
+and design. Converted PCS identities have no roll tracking or copied meter
+conversions. Original identities, source costs and custody lineage remain preserved.
+Stage progress uses source-equivalent quantities to avoid summing meters and pieces.
 
 ## Implementation and migration impact
 
@@ -106,8 +98,8 @@ the fully authorized admin already has these. Wholesale remains denied. An open
 financial year/period is still required; this follow-up does not change the calendar.
 
 Back up the configured application database privately, apply only the new migration,
-run `ProcessingFabricSetupSeeder`, clear compiled views and verify prior-row
-fingerprints. See TESTING.md and PROJECT_STATE.md for actual verification/activation
+clear compiled views and verify prior-row fingerprints. Existing installations
+do not need a seeder for the conversion follow-up. See TESTING.md and PROJECT_STATE.md for actual verification/activation
 results. Exact MySQL 8.4 validation remains separate from the local MariaDB environment.
 
 Suggested commit: `feat(processing): simplify fabric flows and add direct vendor handovers`.

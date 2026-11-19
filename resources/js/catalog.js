@@ -2,8 +2,13 @@ export function catalogItem(config) {
     return {
         ...config,
         isFabric() { return ['grey_fabric', 'processed_fabric'].includes(this.type); },
+        canTrackRolls() { return this.isFabric() && this.units.some((u) => String(u.id) === String(this.unit) && u.code === 'M' && u.dimension === 'length'); },
+        changeUnit() {
+            if (this.readOnly || this.identityLocked) return;
+            if (!this.canTrackRolls()) this.rolls = false;
+        },
         compatible(unit) {
-            if (this.isFabric()) return unit.code === 'M' && unit.dimension === 'length';
+            if (this.isFabric()) return (unit.code === 'M' && unit.dimension === 'length') || (['PCS','SET','THAAN'].includes(unit.code) && unit.dimension === 'count' && unit.decimal_places === 0);
             if (this.type === 'finished') return ['SUIT', 'PACK'].includes(unit.code) && unit.dimension === 'count';
             if (this.type === 'service') return unit.dimension === 'service';
             return unit.dimension !== 'service' && !['SUIT','PACK'].includes(unit.code);

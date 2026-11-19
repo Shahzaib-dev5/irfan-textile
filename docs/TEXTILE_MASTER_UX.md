@@ -1,5 +1,34 @@
 # Guided Textile master data workspace
 
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+## Direct purchase measurement follow-up (2026-11-17)
+
+Direct purchase now creates missing fabric/material definitions inline, selects
+actual receipt units (fabric M/PCS/SET/THAAN), and permits an invoice-free GRN
+followed by a matched supplier bill. Shared definitions retain separate stock
+identities per unit; optional thaan/set/meter totals are original receipt evidence,
+not additional stock balances. One additive migration is applied locally; existing
+stock units and posted costs are preserved. This supersedes earlier M-only/PCS-only
+purchase guidance. Details and limits: [Direct purchase measurements](DIRECT_PURCHASE_MEASUREMENTS.md).
+
+## Processed fabric in pieces (2026-11-16)
+
+Choose Processed fabric with M for measured length or PCS for whole embroidered
+pieces. Both retain required fabric composition and stock management. PCS does
+not support roll tracking. A different base unit requires a separate SKU; existing
+measurement locks and stock history remain protected. Opening and Purchasing
+documents use the item's actual unit. The Processing same-unit receipt rule is
+unchanged: this catalog extension does not implement M-to-PCS processing returns.
+Finished SUIT/PACK definitions and manufacturing remain separate. No migration.
+
 ## Catalog list layout refinement (2026-11-05)
 
 Master lists use a compact heading, one expandable search/filter panel, and a
@@ -93,7 +122,7 @@ roll splitting.
 | Type | Suggested settings | Details |
 |---|---|---|
 | Grey / kora fabric | M; stocked | Raw purchased fabric; composition required |
-| Processed fabric | M; stocked | Processing output; composition required |
+| Processed fabric | M or whole PCS; stocked | Processed length or embroidered pieces; composition required; rolls only for M |
 | Material / consumable | Choose actual physical unit; stocked | Thread, lace and other supplies |
 | Packaging material | Choose actual physical unit; stocked | Bags and boxes, often PCS |
 | Finished product | SUIT; stocked | Complete suit definition; configure variant separately |

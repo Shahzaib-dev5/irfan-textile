@@ -1,5 +1,43 @@
 # Phase 12 — Accounting and finance
 
+Company expenses have a dedicated Finance tab at `/accounting/finance/expenses/create`.
+The form selects a company cashbox or bank account, an active expense GL account,
+amount, date and evidence. Authorized finance configurators can create a new
+expense GL code and name in the same atomic confirmation. It posts through the
+existing cash/bank journal with expense debit and cash/bank credit. Existing
+journal reversal and period controls apply. No new schema is needed.
+
+On new guided payments and receipts, the oldest active cashbox with a usable
+ledger account is selected by default. Choosing a bank account switches the
+method to bank transfer. Migration `2026_11_19_000001_provision_main_cashbox`
+creates Main Cashbox and its cash asset account where no usable cashbox exists.
+Setup posts no opening balance. The migration was applied locally and verified
+with four frontend tests and a successful asset build.
+
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+Processing rate follow-up (2026-11-18): Fabric Out and direct vendor handover
+record the actual agreed rate per dispatch without a published contract. Historical
+job rates remain frozen; advanced contracts are retained. See [dispatch-agreed
+rates](DISPATCH_AGREED_RATES.md) for the nullable-FK migration and limits.
+
+## Direct purchase measurement follow-up (2026-11-17)
+
+Direct purchase now creates missing fabric/material definitions inline, selects
+actual receipt units (fabric M/PCS/SET/THAAN), and permits an invoice-free GRN
+followed by a matched supplier bill. Shared definitions retain separate stock
+identities per unit; optional thaan/set/meter totals are original receipt evidence,
+not additional stock balances. One additive migration is applied locally; existing
+stock units and posted costs are preserved. This supersedes earlier M-only/PCS-only
+purchase guidance. Details and limits: [Direct purchase measurements](DIRECT_PURCHASE_MEASUREMENTS.md).
+
 ## Party creation opening follow-up (2026-11-16)
 
 **Parties > Add party** can optionally confirm a customer's old receivable or a

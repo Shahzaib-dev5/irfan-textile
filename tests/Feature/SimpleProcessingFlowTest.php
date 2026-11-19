@@ -113,6 +113,6 @@ class SimpleProcessingFlowTest extends TestCase
         $data['intent'] = 'save';
         $draft = $this->sendData('job', $data);
         $this->assertSame('draft', $draft->status);
-        $this->get(route('processing.print', $draft))->assertOk()->assertSee('DRAFT - For review only.');
+        $this->get(route('processing.print', $draft))->assertOk()->assertSee('Draft preview only. This document has not been confirmed or posted.');
     }
 }

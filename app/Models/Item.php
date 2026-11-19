@@ -20,6 +20,11 @@ class Item extends CatalogMaster
         return $this->belongsTo(ItemCategory::class, 'category_id');
     }
 
+    public function textileDefinition(): BelongsTo
+    {
+        return $this->belongsTo(TextileDefinition::class);
+    }
+
     public function baseUnit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'base_unit_id');

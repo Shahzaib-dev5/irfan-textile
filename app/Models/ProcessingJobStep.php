@@ -6,7 +6,7 @@ class ProcessingJobStep extends InventoryDocumentPart
 {
     protected function casts(): array
     {
-        return ['planned_input_quantity' => 'decimal:6', 'planned_output_quantity' => 'decimal:6', 'agreed_unit_rate_pkr' => 'decimal:8', 'rate_effective_date' => 'date', 'permitted_normal_loss_fraction' => 'decimal:10'];
+        return ['rate_pending' => 'boolean', 'planned_input_quantity' => 'decimal:6', 'planned_output_quantity' => 'decimal:6', 'agreed_unit_rate_pkr' => 'decimal:8', 'rate_effective_date' => 'date', 'permitted_normal_loss_fraction' => 'decimal:10'];
     }
 
     public function job()

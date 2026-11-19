@@ -41,6 +41,36 @@ class CatalogWorkspaceTest extends TestCase
         return $user;
     }
 
+    public function test_processed_pieces_remain_fabric_and_their_measurement_identity_is_protected(): void
+    {
+        $data = $this->data('processed_fabric');
+        $data['base_unit_id'] = Unit::where('code', 'PCS')->value('id');
+        $this->post(route('catalog.store', ['master' => 'items']), $data)->assertSessionHasNoErrors();
+        $item = Item::where('sku', $data['sku'])->firstOrFail();
+        $this->assertSame('processed_fabric', $item->item_type);
+        $this->assertSame('PCS', $item->baseUnit->code);
+        $this->assertSame('100% cotton', $item->fabricSpecification->composition);
+        $this->assertFalse($item->track_rolls);
+        $this->assertSame(0, StockMovement::count());
+        $this->get(route('catalog.edit', ['master' => 'items', 'record' => $item->id]))
+            ->assertOk()->assertViewHas('itemConfig', fn ($c) => $c['identityLocked'] && $c['unit'] === $item->base_unit_id);
+        $data['base_unit_id'] = Unit::where('code', 'M')->value('id');
+        $this->put(route('catalog.update', ['master' => 'items', 'record' => $item->id]), $data)->assertSessionHasErrors('base_unit_id');
+        $this->assertSame($item->base_unit_id, $item->fresh()->base_unit_id);
+    }
+
+    public function test_piece_fabric_rejects_rolls_nonstock_and_incompatible_units(): void
+    {
+        $data = $this->data('processed_fabric');
+        $data['base_unit_id'] = Unit::where('code', 'PCS')->value('id');
+        $this->post(route('catalog.store', ['master' => 'items']), array_replace($data, ['track_rolls' => true]))->assertSessionHasErrors('track_rolls');
+        $this->post(route('catalog.store', ['master' => 'items']), array_replace($data, ['is_stocked' => false]))->assertSessionHasErrors('base_unit_id');
+        foreach (['KG', 'SUIT', 'PACK'] as $code) {
+            $this->post(route('catalog.store', ['master' => 'items']), array_replace($data, ['base_unit_id' => Unit::where('code', $code)->value('id')]))->assertSessionHasErrors('base_unit_id');
+        }
+        $this->assertDatabaseMissing('items', ['sku' => $data['sku']]);
+    }
+
     private function fixture(string $name, $response): void
     {
         if (! getenv('CATALOG_BROWSER_FIXTURES')) {

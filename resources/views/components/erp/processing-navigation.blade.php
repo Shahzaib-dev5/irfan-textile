@@ -21,7 +21,7 @@ $links[]=['processing.reports','Reports',request()->routeIs('processing.reports'
 <div class="mt-2 rounded-xl border border-line bg-slate-50/60" x-data="{ open: @js($inside) }">
 <button type="button" @click="open=!open" :aria-expanded="open" aria-controls="processing-sidebar-links" class="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-ink"><span>Processing</span><span aria-hidden="true" x-text="open?'-':'+'"></span></button>
 <div id="processing-sidebar-links" x-show="open" @if(!$inside) x-cloak @endif class="space-y-1 px-2 pb-3">
-@foreach($links as [$target,$label,$active])<a href="{{ route($target) }}" @if($active) aria-current="page" @endif class="block rounded-lg px-3 py-2 text-sm {{ $active?'bg-emerald-100 font-semibold text-brand':'text-slate-600 hover:bg-white' }}">{{ $label }}</a>@endforeach
+@foreach($links as [$target,$label,$active])<a target="_blank" rel="noopener" href="{{ route($target) }}" @if($active) aria-current="page" @endif class="block rounded-lg px-3 py-2 text-sm {{ $active?'bg-emerald-100 font-semibold text-brand':'text-slate-600 hover:bg-white' }}">{{ $label }}</a>@endforeach
 </div></div>
 @endif
 

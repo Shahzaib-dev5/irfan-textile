@@ -319,8 +319,9 @@ class SalesService
                         $dispatch = $this->dispatchLine($row['sales_dispatch_line_id'] ?? 0, $customer->id, $data['document_date']);
                         $location = WarehouseLocation::with('warehouse')->findOrFail($row['warehouse_location_id'] ?? 0);
                         $condition = $row['condition_code'] ?? 'quarantine';
-                        if (! $location->is_active || ! $location->warehouse->is_active || $location->warehouse_id !== (int) $data['warehouse_id'] || ! in_array($location->location_type, ['internal', 'quarantine']) || ($condition !== 'saleable' && $location->location_type !== 'quarantine') || ($condition === 'saleable' && $location->location_type !== 'internal')) {
-                            G::fail('Saleable returns need internal storage; other returns need quarantine.');
+                        $main = $location->code === 'MAIN';
+                        if (! $location->is_active || ! $location->warehouse->is_active || $location->warehouse_id !== (int) $data['warehouse_id'] || ! in_array($location->location_type, ['internal', 'quarantine']) || ($condition !== 'saleable' && $location->location_type !== 'quarantine' && ! $main) || ($condition === 'saleable' && $location->location_type !== 'internal')) {
+                            G::fail('Choose a warehouse. Unchecked or damaged returns are held until inspection.');
                         }
                         $lotNo = $row['lot_number'] ?? '';
                         if (! $lotNo || StockLot::where('item_id', $this->dispatchItemId($dispatch))->where('lot_number', $lotNo)->exists()) {
@@ -554,7 +555,8 @@ class SalesService
             $dispatch = $this->dispatchLine($line->sales_dispatch_line_id, $customer->id, $date);
             $p = $this->stock->position($line->stock_position_id, $date);
             $qty = $this->stock->quantity($p, $line->base_quantity);
-            if ($p->lot->origin_document_id !== $doc->id || $p->lot->item_id !== $this->dispatchItemId($dispatch) || $p->location->warehouse_id !== $header->warehouse_id || ! in_array($p->location->location_type, ['internal', 'quarantine']) || ($line->condition_code !== 'saleable' && ($p->location->location_type !== 'quarantine' || $p->lot->quality_status === 'released'))) {
+            $main = $p->location->code === 'MAIN';
+            if ($p->lot->origin_document_id !== $doc->id || $p->lot->item_id !== $this->dispatchItemId($dispatch) || $p->location->warehouse_id !== $header->warehouse_id || ! in_array($p->location->location_type, ['internal', 'quarantine']) || ($line->condition_code !== 'saleable' && (($p->location->location_type !== 'quarantine' && ! $main) || $p->lot->quality_status === 'released'))) {
                 G::fail('Return stock provenance or quality storage is invalid.');
             }
             $before = bcadd($this->returned($dispatch->id), $used[$dispatch->id] ?? '0', 6);

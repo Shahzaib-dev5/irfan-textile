@@ -45,7 +45,7 @@ class ProcessingWorkspace
             'company' => Company::whereKey(1)->exists(),
             'calendar' => $year && AccountingPeriod::where('financial_year_id', $year->id)->whereDate('starts_on', '<=', $date)->whereDate('ends_on', '>=', $date)->where('status', 'open')->exists(),
             'vendors' => VendorServiceRate::whereDate('effective_from', '<=', $date)->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>', $date))->whereHas('vendorService', fn ($q) => $q->where('is_active', true)->whereHas('vendor.role', fn ($q) => $q->where('is_active', true)->whereHas('party', fn ($q) => $q->where('is_active', true)))->whereHas('processingService', fn ($q) => $q->where('is_active', true)))->exists(),
-            'locations' => WarehouseLocation::where('is_active', true)->where('location_type', 'contractor')->whereHas('warehouse', fn ($q) => $q->where('is_active', true))->exists(),
+            'locations' => WarehouseLocation::where('code', 'MAIN')->where('is_active', true)->whereHas('warehouse', fn ($q) => $q->where('code', 'MAIN')->where('is_active', true))->exists(),
             'routes' => ProcessingRouteVersion::where('state', 'published')->where('is_active', true)->exists(),
             'stock' => StockPosition::whereHas('location', fn ($q) => $q->where('location_type', 'internal')->where('is_active', true))->whereHas('lot', fn ($q) => $q->where('quality_status', 'released'))->whereHas('balance', fn ($q) => $q->whereRaw('on_hand_quantity > reserved_quantity'))->exists(),
         ];
@@ -163,7 +163,7 @@ class ProcessingWorkspace
             if (bccomp($remaining, '0', 6) <= 0) {
                 continue;
             }
-            $rows[] = ['id' => $l->id, 'label' => 'Line '.$l->line_no.' / '.$l->step->service->name, 'available' => $remaining, 'accepted' => $l->accepted_service_quantity, 'billed' => bcsub($l->accepted_service_quantity, $remaining, 6), 'rate' => $l->step->agreed_unit_rate_pkr, 'unit' => $l->step->billingUnit->code, 'places' => $l->step->billingUnit->decimal_places];
+            $rows[] = ['id' => $l->id, 'label' => 'Line '.$l->line_no.' / '.$l->step->service->name, 'available' => $remaining, 'accepted' => $l->accepted_service_quantity, 'billed' => bcsub($l->accepted_service_quantity, $remaining, 6), 'rate' => $l->unit_rate_pkr, 'unit' => $l->billingUnit->code, 'places' => $l->billingUnit->decimal_places];
         }
 
         return $rows;

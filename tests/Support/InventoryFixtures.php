@@ -43,6 +43,8 @@ trait InventoryFixtures
         $category = ItemCategory::factory()->create();
         $this->item = Item::factory()->create(['category_id' => $category->id, 'base_unit_id' => Unit::where('code', 'M')->value('id'), 'sku' => 'GREY-TEST', 'item_type' => 'grey_fabric', 'is_stocked' => true, 'track_rolls' => false, 'is_active' => true]);
         $this->source = WarehouseLocation::factory()->create();
+        $this->source->warehouse->update(['code' => 'MAIN', 'name' => 'Main Warehouse']);
+        $this->source->update(['code' => 'MAIN', 'name' => 'Main Warehouse']);
         $this->destination = WarehouseLocation::factory()->create();
         $this->inventory = app(InventoryService::class);
     }

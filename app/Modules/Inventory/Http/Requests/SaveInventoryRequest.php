@@ -8,7 +8,8 @@ class SaveInventoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasPermissionTo('inventory.manage') ?? false;
+        return ($this->user()?->hasPermissionTo('inventory.manage') ?? false)
+            && ($this->input('kind') !== 'transfer' || $this->user()->hasPermissionTo('inventory.post'));
     }
 
     public function rules(): array

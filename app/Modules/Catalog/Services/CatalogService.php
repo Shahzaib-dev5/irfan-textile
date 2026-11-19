@@ -26,17 +26,17 @@ use Illuminate\Validation\ValidationException;
 
 class CatalogService
 {
-    public function save(string $master, array $input, ?int $id = null): Model
+    public function save(string $master, array $input, ?int $id = null, bool $purchaseDefinition = false): Model
     {
         $modelClass = CatalogRegistry::model($master);
 
-        return DB::transaction(function () use ($master, $input, $id, $modelClass): Model {
+        return DB::transaction(function () use ($master, $input, $id, $modelClass, $purchaseDefinition): Model {
             $this->lockCatalog();
             $record = $id ? $modelClass::query()->lockForUpdate()->findOrFail($id) : new $modelClass;
             $data = validator($input, CatalogRegistry::rules($master, $id))->validate();
             $data = Arr::only($data, [...array_keys(CatalogRegistry::fields($master)), 'fabric']);
             $before = $record->exists ? $record->toArray() : null;
-            $this->validateDomain($master, $record, $data);
+            $this->validateDomain($master, $record, $data, $purchaseDefinition);
             $fabric = Arr::pull($data, 'fabric', []);
             $record->fill($data)->save();
             app(AuditLogger::class)->record($record->getTable(), $record->getKey(), $before ? 'updated' : 'created', $before, $record->fresh()->toArray());
@@ -74,7 +74,7 @@ class CatalogService
         }
     }
 
-    private function validateDomain(string $master, Model $record, array $data): void
+    private function validateDomain(string $master, Model $record, array $data, bool $purchaseDefinition = false): void
     {
         if ($master === 'units') {
             if ($record->exists && ($record->code !== $data['code'] || $record->dimension !== $data['dimension'] || $record->decimal_places !== (int) $data['decimal_places'])) {
@@ -110,10 +110,12 @@ class CatalogService
                 $this->fail('base_unit_id', 'Active items require an active unit and category.');
             }
             $isFabric = in_array($data['item_type'], ['grey_fabric', 'processed_fabric'], true);
-            if ($isFabric && ($unit->code !== 'M' || $unit->dimension !== 'length' || ! $data['is_stocked'])) {
-                $this->fail('base_unit_id', 'Fabric is a stock-managed item with base unit M (meters).');
+            $meterFabric = $unit->code === 'M' && $unit->dimension === 'length';
+            $pieceFabric = $isFabric && in_array($unit->code, ['PCS', 'SET', 'THAAN'], true) && $unit->dimension === 'count' && $unit->decimal_places === 0;
+            if ($isFabric && ((! $meterFabric && ! $pieceFabric) || ! $data['is_stocked'])) {
+                $this->fail('base_unit_id', 'Fabric uses M or whole PCS, SET or THAAN. It must be stock-managed.');
             }
-            if ($isFabric && blank($data['fabric']['composition'] ?? null)) {
+            if ($isFabric && ! $purchaseDefinition && blank($data['fabric']['composition'] ?? null) && ! $record->textile_definition_id) {
                 $this->fail('fabric.composition', 'Fabric composition is required.');
             }
             if (! $isFabric && collect($data['fabric'] ?? [])->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty()) {
@@ -131,10 +133,17 @@ class CatalogService
             if ($data['item_type'] !== 'service' && $unit->dimension === 'service') {
                 $this->fail('base_unit_id', 'Physical materials require a physical measurement unit.');
             }
-            if ($data['track_rolls'] && (! $isFabric || ! $data['is_stocked'])) {
-                $this->fail('track_rolls', 'Roll tracking is only available for stock-managed fabric.');
+            if ($data['track_rolls'] && (! $isFabric || ! $meterFabric || ! $data['is_stocked'])) {
+                $this->fail('track_rolls', 'Roll tracking is only available for stock-managed fabric measured in M.');
             }
             if ($record->exists) {
+                if ($record->textile_definition_id) {
+                    foreach (['sku', 'name', 'category_id', 'item_type', 'base_unit_id', 'is_stocked', 'track_rolls'] as $identity) {
+                        if ($data[$identity] != $record->$identity) {
+                            $this->fail($identity, 'This measurement belongs to a shared textile definition. Create a new definition for a different identity.');
+                        }
+                    }
+                }
                 if (DB::table('stock_lots')->where('item_id', $record->id)->exists() || DB::table('purchase_order_lines')->where('item_id', $record->id)->exists() || (Schema::hasTable('sales_order_lines') && DB::table('sales_order_lines')->where('item_id', $record->id)->exists())) {
                     if (! $data['is_active'] && DB::table('stock_movements as m')->join('stock_positions as p', 'p.id', '=', 'm.stock_position_id')->join('stock_lots as l', 'l.id', '=', 'p.stock_lot_id')->where('l.item_id', $record->id)->groupBy('p.id')->havingRaw('SUM(m.quantity_delta)>0')->exists()) {
                         $this->fail('is_active', 'Move or dispose remaining stock before deactivating its item.');

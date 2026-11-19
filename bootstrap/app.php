@@ -3,6 +3,8 @@
 use App\Modules\Identity\Console\CreateInitialAdministrator;
 use App\Modules\Identity\Http\Middleware\EnsureActiveUser;
 use App\Modules\Identity\Http\Middleware\EnsurePermission;
+use App\Modules\Warehouses\Console\ResetDummyWarehouse;
+use App\Modules\Core\Console\ResetBusinessData;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withCommands([CreateInitialAdministrator::class])
+    ->withCommands([CreateInitialAdministrator::class, ResetDummyWarehouse::class, ResetBusinessData::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'active.user' => EnsureActiveUser::class,

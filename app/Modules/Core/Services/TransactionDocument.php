@@ -122,12 +122,12 @@ class TransactionDocument
         $total = in_array($kind, ['receipt', 'bill']) ? '0.0000' : null;
         foreach ($header->lines as $line) {
             if ($kind === 'job') {
-                $rows[] = [$line->line_no.' / '.$line->service->name, $line->inputItem->sku.' / '.$line->outputItem->sku, $line->vendorService->vendor->role->party->legal_name, $line->planned_input_quantity.' / '.$line->planned_output_quantity.' '.$line->inputItem->baseUnit->code, $line->agreed_unit_rate_pkr.' / '.$line->billingUnit->code];
+                $rows[] = [$line->line_no.' / '.$line->service->name, $line->inputItem->sku.' / '.$line->outputItem->sku, $line->vendorService->vendor->role->party->legal_name, $line->planned_input_quantity.' / '.$line->planned_output_quantity.' '.$line->inputItem->baseUnit->code, ($line->rate_pending ? 'Rate pending' : $line->agreed_unit_rate_pkr.' / '.$line->billingUnit->code)];
             } elseif ($kind === 'dispatch') {
                 $rows[] = [$line->step->line_no.' / '.$line->step->service->name, $this->stockLabel($line->source), $line->contractor->location->code, $line->quantity, $line->source->lot->item->baseUnit->code];
             } elseif ($kind === 'receipt') {
                 $unit = $line->step->inputItem->baseUnit->code;
-                $rows[] = [$line->step->service->name.' / '.$line->disposition, $line->dispatchLine->dispatch->document->number, $this->stockLabel($line->output), $line->source_quantity.' '.$unit, $line->output_quantity.' '.$line->output->lot->item->baseUnit->code, $line->normal_loss_quantity.' / '.$line->abnormal_loss_quantity.' '.$unit, $line->service_accrual_pkr];
+                $rows[] = [$line->step->service->name.' / '.$line->disposition, $line->dispatchLine->dispatch->document->number, $this->stockLabel($line->output), $line->source_quantity.' '.$unit, $line->output_quantity.' '.$line->output->lot->item->baseUnit->code.'; retained '.$line->output_source_equivalent_quantity.' '.$unit, $line->normal_loss_quantity.' / '.$line->abnormal_loss_quantity.' '.$unit, $line->service_accrual_pkr.' ('.$line->accepted_service_quantity.' '.$line->billingUnit->code.' @ '.$line->unit_rate_pkr.')'];
                 $total = bcadd($total, $line->service_accrual_pkr, 4);
             } else {
                 $matches = PurchaseInvoiceProcessingMatch::with('receiptLine.receipt.document')->where('purchase_invoice_line_id', $line->id)->get();

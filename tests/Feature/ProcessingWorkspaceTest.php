@@ -57,17 +57,18 @@ class ProcessingWorkspaceTest extends TestCase
         $dispatch = $this->dispatch($job, $this->position($this->opening()));
         $receipt = $this->processingReceipt($dispatch, '40', '40');
         $bill = $this->contractorBill($receipt, '20');
-        foreach (['/processing', '/processing/jobs', '/processing/dispatches', '/processing/receipts', '/processing/bills', '/processing/payables', '/processing/custody', '/processing/reports', '/processing/types'] as $path) {
+        foreach (['/processing/jobs', '/processing/dispatches', '/processing/receipts', '/processing/bills', '/processing/payables', '/processing/custody', '/processing/reports', '/processing/types'] as $path) {
             $this->get($path)->assertOk();
         }
         $this->get('/processing/jobs?kind=bill')->assertOk()->assertViewHas('documents', fn ($rows) => $rows->count() === 1 && $rows->first()->id === $job->id);
         $this->get(route('processing.jobs.show', $bill))->assertNotFound();
-        $this->get('/processing')->assertSee('Before sending fabric')->assertSee('processing-sidebar-links')->assertSee('Stock with vendors')->assertSee('A bill is not a payment');
+        $this->get('/processing')->assertRedirect(route('processing.jobs.index'));
+        $this->get('/processing/jobs')->assertSee('processing-sidebar-links')->assertSee('Stock with vendors')->assertSee('What happens here?');
     }
 
     public function test_job_dispatch_receipt_bill_links_keep_the_original_context(): void
     {
-        $this->browserFixture('overview', $this->get('/processing')->assertOk());
+        $this->browserFixture('overview', $this->get('/processing/jobs')->assertOk());
         $this->browserFixture('job', $this->get(route('processing.jobs.create', ['route' => $this->route->id]))->assertOk());
         $job = $this->job();
         $step = ProcessingJob::find($job->id)->lines->first();
@@ -170,14 +171,15 @@ class ProcessingWorkspaceTest extends TestCase
     public function test_new_routes_enforce_permissions_and_vendor_only_navigation_is_separate(): void
     {
         $read = $this->limitedUser(['processing.documents.view']);
-        $this->actingAs($read)->get('/processing')->assertOk()->assertDontSee(route('vendor.index'));
+        $this->actingAs($read)->get('/processing')->assertRedirect(route('processing.jobs.index'));
+        $this->get('/processing/jobs')->assertOk()->assertDontSee(route('vendor.index'));
         foreach (['jobs', 'dispatches', 'receipts', 'bills'] as $kind) {
             $this->get('/processing/'.$kind)->assertOk();
             $this->get('/processing/'.$kind.'/create')->assertForbidden();
             $this->post('/processing/'.$kind, [])->assertForbidden();
         }
         $vendor = $this->limitedUser(['processing.vendor.view']);
-        $this->actingAs($vendor)->get('/processing/vendors')->assertOk()->assertSee('processing-sidebar-links')->assertDontSee(route('processing.jobs.index'));
+        $this->actingAs($vendor)->get('/processing/vendors')->assertOk()->assertSee('Vendor directory')->assertDontSee(route('processing.jobs.index'));
         foreach (['', '/payables', '/jobs', '/dispatches', '/receipts', '/bills'] as $path) {
             $this->get('/processing'.$path)->assertForbidden();
         }

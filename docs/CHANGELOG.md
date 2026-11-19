@@ -4,6 +4,53 @@
 
 Added the supplied company logo as a prepared full mark and monogram icon. The monogram appears in the browser favicon, navigation header, and sign-in screen. The full mark is embedded in transaction PDFs and print views through the shared document renderer. No database migration or transaction data change.
 
+## Local fresh start (2026-11-19)
+
+Added guarded `erp:reset-business` command and used it after a full private backup to clear local business data while preserving company, admin access, and default setup. See [fresh start reset](FRESH_START_RESET.md).
+
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+- Fabric Out/handover now take an explicit dispatch-agreed rate without published
+  rate lookup, autofill or override approval. Existing posting permissions remain.
+  Nullable source-contract reference plus audit evidence preserve job pricing.
+  Historical rates remain available for advanced jobs. See DISPATCH_AGREED_RATES.md.
+
+- Direct purchase now offers simple inline fabric/material creation, actual stock
+  unit selection, shared definitions with separate measurement identities, and
+  original thaan/set/meter evidence with explicit rate basis. Supplier invoices
+  are optional; missing invoices leave a posted GRN awaiting the existing matched
+  bill flow. Added full-request replay protection and additive measurement metadata.
+  See DIRECT_PURCHASE_MEASUREMENTS.md for scope and limits.
+
+- Processed fabric now supports M or whole PCS in catalog validation and the
+  guided item form. PCS fabric retains composition and stock management; roll
+  tracking remains M-only. Existing SKU measurement locks remain. No migration
+  or change to Processing's same-unit receipt rule.
+
+- Warehouse transfer forms now use Confirm transfer. The existing save and post
+  operations run in one transaction with permissions and replay protection. Failed
+  posting leaves no partial movement/draft. No schema change or data reset.
+
+- Inventory navigation now accurately labels the combined history as Inventory
+  documents. Restored the permission-gated New warehouse transfer button and
+  warehouse-transfer terminology in the document list. No database change.
+
+## Main Warehouse follow-up (2026-11-16)
+
+Clarification: multiple warehouses are supported. Only internal location/rack
+setup is removed. Each warehouse provisions its hidden stock storage automatically;
+receipts and transfers select warehouse names directly. Vendor custody and held
+quality remain tracked. No schema migration or additional data reset is needed.
+The earlier dummy reset has a private recovery backup. Current behavior is in
+[Main Warehouse implementation and reset scope](MAIN_WAREHOUSE.md).
+
 ## 2026-11-16
 
 - Added optional old unpaid balance entry to Parties > Add party, with plain

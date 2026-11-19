@@ -37,6 +37,7 @@ use App\Modules\Inventory\Support\Decimal as D;
 use App\Modules\Production\Services\ProductionProgress;
 use App\Modules\Production\Services\ProductionService;
 use App\Modules\Purchasing\Services\PurchaseDocuments;
+use App\Modules\Warehouses\Services\MainWarehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
@@ -255,9 +256,17 @@ class ProcessingService
             }
             $date = $line['rate_effective_date'] ?? $d['document_date'];
             validator(['date' => $date], ['date' => 'required|date_format:Y-m-d|before_or_equal:'.$d['document_date']])->validate();
-            $r = $this->rate($v, $date);
-            $rate = isset($line['agreed_unit_rate_pkr']) && $line['agreed_unit_rate_pkr'] !== '' ? D::input($line['agreed_unit_rate_pkr'], 8) : $r->unit_rate;
-            if (bccomp($rate, $r->unit_rate, 8)) {
+            $dispatchAgreed = ($line['rate_source'] ?? null) === 'dispatch';
+            $ratePending = $dispatchAgreed && (! isset($line['agreed_unit_rate_pkr']) || $line['agreed_unit_rate_pkr'] === '');
+            $r = $dispatchAgreed ? null : $this->rate($v, $date);
+            if ($dispatchAgreed && ! $ratePending) {
+                validator($line, ['agreed_unit_rate_pkr' => 'required|decimal:0,8|min:0'])->validate();
+            }
+            $rate = $ratePending ? '0.00000000' : (isset($line['agreed_unit_rate_pkr']) && $line['agreed_unit_rate_pkr'] !== '' ? D::input($line['agreed_unit_rate_pkr'], 8) : $r->unit_rate);
+            $billingUnit = $r?->billing_unit_id ?? $v->processingService->billing_unit_id;
+            if ($dispatchAgreed) {
+                $this->audit->record('documents', $doc->id, 'dispatch_rate_agreed', null, ['stage' => $s->id, 'vendor_service_id' => $v->id, 'billing_unit_id' => $billingUnit, 'agreed_rate' => $rate, 'rate_pending' => $ratePending, 'reason' => $line['override_reason'] ?? null], $actor, $doc->id);
+            } elseif (bccomp($rate, $r->unit_rate, 8)) {
                 Guard::actor($actor, 'processing.rates.override');
                 validator($line, ['override_reason' => 'required|string|min:10|max:500'])->validate();
                 $this->audit->record('documents', $doc->id, 'negotiated_rate_authorized', null, ['stage' => $s->id, 'source_rate_id' => $r->id, 'source_rate' => $r->unit_rate, 'agreed_rate' => $rate, 'reason' => $line['override_reason']], $actor, $doc->id);
@@ -268,7 +277,7 @@ class ProcessingService
             }
             $this->quantityPrecision(Item::with('baseUnit')->findOrFail($s->input_item_id), $qty);
             $this->quantityPrecision(Item::with('baseUnit')->findOrFail($s->output_item_id), $out);
-            ProcessingJobStep::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'processing_route_step_id' => $s->id, 'processing_service_id' => $s->processing_service_id, 'vendor_service_id' => $v->id, 'vendor_service_rate_id' => $r->id, 'input_item_id' => $s->input_item_id, 'output_item_id' => $s->output_item_id, 'planned_input_quantity' => $qty, 'planned_output_quantity' => $out, 'billing_unit_id' => $r->billing_unit_id, 'agreed_unit_rate_pkr' => $rate, 'rate_effective_date' => $date, 'permitted_normal_loss_fraction' => $s->permitted_normal_loss_fraction]);
+            ProcessingJobStep::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'processing_route_step_id' => $s->id, 'processing_service_id' => $s->processing_service_id, 'vendor_service_id' => $v->id, 'vendor_service_rate_id' => $r?->id, 'input_item_id' => $s->input_item_id, 'output_item_id' => $s->output_item_id, 'planned_input_quantity' => $qty, 'planned_output_quantity' => $out, 'billing_unit_id' => $billingUnit, 'agreed_unit_rate_pkr' => $rate, 'rate_pending' => $ratePending, 'rate_effective_date' => $date, 'permitted_normal_loss_fraction' => $s->permitted_normal_loss_fraction]);
             $qty = $out;
         }
     }
@@ -311,6 +320,9 @@ class ProcessingService
         $h = $this->execution($doc, $d, 'dispatch');
         $no = 0;
         foreach ($d['lines'] as $l) {
+            if (empty($l['contractor_location_id'])) {
+                $l['contractor_location_id'] = app(MainWarehouse::class)->custody($h->vendor_party_role_id)->id;
+            }
             validator($l, ['processing_job_step_id' => 'required|integer', 'source_stock_position_id' => 'required|integer', 'contractor_location_id' => 'required|integer', 'quantity' => 'required|numeric|gt:0'])->validate();
             $s = $this->step($l['processing_job_step_id'], $h->processing_job_document_id, $h->vendor_party_role_id);
             $p = $this->stock->position($l['source_stock_position_id'], $d['document_date'], true);
@@ -337,6 +349,13 @@ class ProcessingService
             }
             $s = $this->step($dispatch->processing_job_step_id, $h->processing_job_document_id, $h->vendor_party_role_id);
             $item = $l['disposition'] === 'accepted' ? $s->outputItem : $s->inputItem;
+            if ($l['disposition'] === 'accepted' && ($l['return_unit_code'] ?? '') === 'PCS' && $item->baseUnit->code !== 'PCS') {
+                $item = app(FabricMeasurement::class)->pieces($item, $doc->created_by);
+            }
+            if (! empty($l['return_unit_code']) && $l['return_unit_code'] !== $item->baseUnit->code) {
+                Guard::fail('Returned unit does not match the selected disposition or supported conversion.');
+            }
+            $converted = $item->base_unit_id !== $s->inputItem->base_unit_id;
             $source = $this->positive($l['source_quantity']);
             $out = $this->positive($l['output_quantity']);
             $normal = D::input($l['normal_loss_quantity'] ?? '0');
@@ -345,31 +364,51 @@ class ProcessingService
             $this->quantityPrecision($item, $out);
             $this->quantityPrecision($s->inputItem, $normal);
             $this->quantityPrecision($s->inputItem, $abnormal);
-            // Physical output and input use the same base unit. There is no invented meter-to-piece conversion.
-            if (bccomp($source, bcadd($out, bcadd($normal, $abnormal, 6), 6), 6)) {
+            $equivalent = $converted ? $this->positive($l['output_source_equivalent_quantity'] ?? '0') : $out;
+            $this->quantityPrecision($s->inputItem, $equivalent);
+            if ($converted && (empty($d['remarks']) || strlen($d['remarks']) < 10)) {
+                Guard::fail('Record actual cutting/measurement evidence for the returned pieces.');
+            }
+            if (bccomp($source, bcadd($equivalent, bcadd($normal, $abnormal, 6), 6), 6)) {
                 Guard::fail('Issued quantity closed must equal returned output plus normal and abnormal loss.');
             }
             if (bccomp($normal, bcmul($source, $s->permitted_normal_loss_fraction, 6), 6) > 0) {
                 Guard::fail('Normal loss exceeds the approved route allowance; classify excess as abnormal loss.');
             }
             $service = '0.000000';
+            $actualPricing = isset($l['actual_unit_rate_pkr']) && $l['actual_unit_rate_pkr'] !== '';
+            $billingUnit = $actualPricing ? Unit::findOrFail($l['actual_billing_unit_id'] ?? 0) : $s->billingUnit;
+            $receiptRate = $actualPricing ? D::input($l['actual_unit_rate_pkr'], 8) : $s->agreed_unit_rate_pkr;
+            if (! $billingUnit->is_active || ($actualPricing && ! in_array($billingUnit->code, ['M', 'PCS', 'SUIT', 'SET', 'THAAN']))) {
+                Guard::fail('Choose an active processing billing unit.');
+            }
+            if ($l['disposition'] === 'accepted' && $s->rate_pending && ! $actualPricing) {
+                Guard::fail('Rate pending: enter the actual rate and billing unit on Fabric In.');
+            }
             if ($l['disposition'] === 'rejected') {
                 if (bccomp($normal, '0', 6) || bccomp($abnormal, '0', 6) || bccomp($source, $out, 6) || bccomp((string) ($l['accepted_service_quantity'] ?? 0), '0', 6)) {
                     Guard::fail('Rejected returns preserve the input item and cannot include charges or loss.');
                 }
             } else {
-                if ($s->billing_unit_id === $item->base_unit_id) {
+                if ($billingUnit->id === $item->base_unit_id) {
                     $service = $out;
                     if (isset($l['accepted_service_quantity']) && $l['accepted_service_quantity'] !== '' && bccomp(D::input($l['accepted_service_quantity']), $out, 6)) {
                         Guard::fail('Service quantity must equal the accepted measured meters/base units.');
                     }
                 } else {
                     $service = $this->positive($l['accepted_service_quantity'] ?? '0');
-                    if (bccomp($service, bcadd($service, '0', $s->billingUnit->decimal_places), 6)) {
+                    if (bccomp($service, bcadd($service, '0', $billingUnit->decimal_places), 6)) {
                         Guard::fail('Service quantity exceeds billing-unit precision.');
                     }
-                    if ($s->billingUnit->dimension === $item->baseUnit->dimension) {
-                        $factor = $item->conversions()->where('unit_id', $s->billing_unit_id)->value('factor_to_base');
+                    if ($actualPricing) {
+                        if (empty($d['remarks']) || strlen($d['remarks']) < 10) {
+                            Guard::fail('Record evidence for the actual billable quantity.');
+                        }
+                        if ($converted && $billingUnit->id === $s->inputItem->base_unit_id && bccomp($service, $equivalent, 6)) {
+                            Guard::fail('Meter billing must equal actual retained meters in the returned pieces.');
+                        }
+                    } elseif ($s->billingUnit->dimension === $item->baseUnit->dimension) {
+                        $factor = $item->conversions()->where('unit_id', $billingUnit->id)->value('factor_to_base');
                         if (! $factor || bccomp(bcmul($service, $factor, 16), $out, 16)) {
                             Guard::fail('Service quantity must reconcile to the configured item conversion.');
                         }
@@ -378,7 +417,7 @@ class ProcessingService
                     }
                 }
             }
-            $charge = $this->money(D::round(bcmul($service, $s->agreed_unit_rate_pkr, 18)));
+            $charge = $this->money(D::round(bcmul($service, $receiptRate, 18)));
             $location = $this->location($l['receiving_location_id'], $this->handoverCustodian);
             $lot = StockLot::create(['item_id' => $item->id, 'lot_number' => $l['lot_number'], 'origin_document_id' => $doc->id, 'quality_status' => $l['quality_status']]);
             $roll = null;
@@ -389,7 +428,7 @@ class ProcessingService
                 $roll = FabricRoll::create(['stock_lot_id' => $lot->id, 'roll_number' => $l['roll_number'], 'is_active' => true]);
             }
             $p = $this->newPosition($lot->id, $location->id, $roll?->id);
-            ProcessingReceiptLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'processing_job_step_id' => $s->id, 'processing_dispatch_line_id' => $dispatch->id, 'disposition' => $l['disposition'], 'source_stock_position_id' => $dispatch->contractor_stock_position_id, 'output_stock_position_id' => $p->id, 'source_quantity' => $source, 'output_quantity' => $out, 'output_source_equivalent_quantity' => $out, 'normal_loss_quantity' => $normal, 'abnormal_loss_quantity' => $abnormal, 'accepted_service_quantity' => $service, 'service_accrual_pkr' => $charge, 'abnormal_loss_cost_pkr' => 0, 'abnormal_loss_account_id' => bccomp($abnormal, '0', 6) > 0 ? $this->documents->account('abnormal_processing_loss') : null]);
+            ProcessingReceiptLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'processing_job_step_id' => $s->id, 'processing_dispatch_line_id' => $dispatch->id, 'disposition' => $l['disposition'], 'source_stock_position_id' => $dispatch->contractor_stock_position_id, 'output_stock_position_id' => $p->id, 'source_quantity' => $source, 'output_quantity' => $out, 'output_source_equivalent_quantity' => $equivalent, 'normal_loss_quantity' => $normal, 'abnormal_loss_quantity' => $abnormal, 'accepted_service_quantity' => $service, 'service_accrual_pkr' => $charge, 'billing_unit_id' => $billingUnit->id, 'unit_rate_pkr' => $receiptRate, 'abnormal_loss_cost_pkr' => 0, 'abnormal_loss_account_id' => bccomp($abnormal, '0', 6) > 0 ? $this->documents->account('abnormal_processing_loss') : null]);
         }
     }
 
@@ -415,8 +454,8 @@ class ProcessingService
                 Guard::fail('Bills must match accepted posted receipts of this vendor.');
             }
             $q = $this->positive($l['quantity']);
-            $this->quantityPrecisionForBilling($r->step->billing_unit_id, $q);
-            $amount = $this->money(D::round(bcmul($q, $r->step->agreed_unit_rate_pkr, 18)));
+            $this->quantityPrecisionForBilling($r->billing_unit_id, $q);
+            $amount = $this->money(D::round(bcmul($q, $r->unit_rate_pkr, 18)));
             // The last bill takes the rounded residual, so repeated partial bills conserve the accrual.
             $posted = PurchaseInvoiceProcessingMatch::where('processing_receipt_line_id', $r->id)->whereHas('invoiceLine.invoice.document', fn ($q) => $q->where('status', 'posted'));
             $used = (string) (clone $posted)->sum('billed_service_quantity');
@@ -438,7 +477,7 @@ class ProcessingService
         }
         PurchaseInvoice::create(['document_id' => $doc->id, 'payee_party_role_id' => $role->id, 'supplier_invoice_number' => $ref, 'supplier_invoice_date' => $d['supplier_invoice_date'], 'due_on' => $d['due_on'], 'net_amount' => $total, 'gross_amount' => $total, 'notes' => $d['remarks'] ?? null]);
         foreach ($rows as $i => [$r,$q,$amount]) {
-            $line = PurchaseInvoiceLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'line_kind' => 'processing', 'processing_job_step_id' => $r->processing_job_step_id, 'description' => 'Processing receipt '.$r->receipt->document->number.' line '.$r->line_no, 'unit_id' => $r->step->billing_unit_id, 'quantity' => $q, 'base_quantity' => $q, 'conversion_factor' => 1, 'unit_price' => $r->step->agreed_unit_rate_pkr, 'net_amount' => $amount, 'gross_amount' => $amount]);
+            $line = PurchaseInvoiceLine::create(['document_id' => $doc->id, 'line_no' => $i + 1, 'line_kind' => 'processing', 'processing_job_step_id' => $r->processing_job_step_id, 'description' => 'Processing receipt '.$r->receipt->document->number.' line '.$r->line_no, 'unit_id' => $r->billing_unit_id, 'quantity' => $q, 'base_quantity' => $q, 'conversion_factor' => 1, 'unit_price' => $r->unit_rate_pkr, 'net_amount' => $amount, 'gross_amount' => $amount]);
             PurchaseInvoiceProcessingMatch::create(['purchase_invoice_line_id' => $line->id, 'processing_receipt_line_id' => $r->id, 'billed_service_quantity' => $q, 'net_amount' => $amount, 'accrued_value_relieved' => $amount]);
         }
     }
@@ -455,7 +494,7 @@ class ProcessingService
     {
         $ids = $job->lines->pluck('id');
         $issued = ProcessingDispatchLine::whereIn('processing_job_step_id', $ids)->whereHas('dispatch.document', fn ($q) => $q->where('status', 'posted'))->selectRaw('processing_job_step_id,SUM(quantity) AS issued')->groupBy('processing_job_step_id')->get()->keyBy('processing_job_step_id');
-        $returned = ProcessingReceiptLine::whereIn('processing_job_step_id', $ids)->whereHas('receipt.document', fn ($q) => $q->where('status', 'posted'))->selectRaw("processing_job_step_id,SUM(source_quantity) AS closed,SUM(CASE WHEN disposition='accepted' THEN output_quantity ELSE 0 END) AS accepted,SUM(CASE WHEN disposition='rejected' THEN output_quantity ELSE 0 END) AS rejected,SUM(normal_loss_quantity) AS normal_loss,SUM(abnormal_loss_quantity) AS abnormal_loss")->groupBy('processing_job_step_id')->get()->keyBy('processing_job_step_id');
+        $returned = ProcessingReceiptLine::whereIn('processing_job_step_id', $ids)->whereHas('receipt.document', fn ($q) => $q->where('status', 'posted'))->selectRaw("processing_job_step_id,SUM(source_quantity) AS closed,SUM(CASE WHEN disposition='accepted' THEN output_source_equivalent_quantity ELSE 0 END) AS accepted,SUM(CASE WHEN disposition='rejected' THEN output_quantity ELSE 0 END) AS rejected,SUM(normal_loss_quantity) AS normal_loss,SUM(abnormal_loss_quantity) AS abnormal_loss")->groupBy('processing_job_step_id')->get()->keyBy('processing_job_step_id');
         $result = [];
         foreach ($ids as $id) {
             $r = $returned->get($id);
@@ -531,7 +570,17 @@ class ProcessingService
 
     private function payloadHash(Document $doc): string
     {
-        $details = $this->header($doc)->toArray();
+        $header = $this->header($doc);
+        $details = $header->toArray();
+        // Additive defaults must not invalidate historical frozen posting hashes.
+        foreach ($header->lines as $index => $line) {
+            if ($this->kind($doc) === 'job' && ! $line->rate_pending) {
+                unset($details['lines'][$index]['rate_pending']);
+            }
+            if ($this->kind($doc) === 'receipt' && $line->getRawOriginal('billing_unit_id') === null && $line->getRawOriginal('unit_rate_pkr') === null) {
+                unset($details['lines'][$index]['billing_unit_id'], $details['lines'][$index]['unit_rate_pkr']);
+            }
+        }
         // Preserve pre-Phase-9 frozen hashes for unlinked historical jobs.
         if ($this->kind($doc) === 'job' && ($details['manufacturing_batch_document_id'] ?? null) === null) {
             unset($details['manufacturing_batch_document_id']);
@@ -547,6 +596,14 @@ class ProcessingService
         }
         foreach ($h->lines as $s) {
             $v = $this->capability($s->vendor_service_id);
+            if ($s->vendor_service_rate_id === null) {
+                $evidence = AuditEvent::where('document_id', $h->document_id)->where('action', 'dispatch_rate_agreed')->get()->contains(fn ($a) => ($a->after_json['stage'] ?? null) === $s->processing_route_step_id && ($a->after_json['vendor_service_id'] ?? null) === $s->vendor_service_id && ($a->after_json['billing_unit_id'] ?? null) === $s->billing_unit_id && (bool) ($a->after_json['rate_pending'] ?? false) === $s->rate_pending && bccomp($a->after_json['agreed_rate'] ?? '-1', $s->agreed_unit_rate_pkr, 8) === 0);
+                if (! $evidence || $s->billing_unit_id !== $v->processingService->billing_unit_id) {
+                    Guard::fail('The dispatch-agreed rate or billing unit has changed. Prepare a new job.');
+                }
+
+                continue;
+            }
             $r = $this->rate($v, $s->rate_effective_date->format('Y-m-d'));
             if ($r->id !== $s->vendor_service_rate_id) {
                 Guard::fail('The source contract changed; cancel and prepare a new job version.');
@@ -676,7 +733,7 @@ class ProcessingService
                 Guard::fail('Receipt exceeds outstanding issued quantity.');
             }
             $target = $positions[$l->output_stock_position_id];
-            if ($target->lot->item_id !== ($l->disposition === 'accepted' ? $s->output_item_id : $s->input_item_id)) {
+            if ($target->lot->item_id !== ($l->disposition === 'accepted' ? $s->output_item_id : $s->input_item_id) && ! ($l->disposition === 'accepted' && app(FabricMeasurement::class)->isPieceOutput($s->outputItem, $target->lot->item))) {
                 Guard::fail('Returned item differs from the approved stage output/disposition.');
             }
             $layer = StockCostLayer::where('receipt_stock_movement_id', $dispatch->contractor_stock_movement_id)->lockForUpdate()->firstOrFail();
@@ -740,8 +797,8 @@ class ProcessingService
             if (bccomp($m->billed_service_quantity, $left, 6) > 0) {
                 Guard::fail('The contractor receipt is already billed or has insufficient unmatched quantity.');
             }
-            $expected = bccomp($m->billed_service_quantity, $left, 6) === 0 ? bcsub($r->service_accrual_pkr, $value, 4) : D::round(bcmul($m->billed_service_quantity, $r->step->agreed_unit_rate_pkr, 18));
-            if (bccomp($expected, $line->net_amount, 4) || bccomp($expected, $m->accrued_value_relieved, 4)) {
+            $expected = bccomp($m->billed_service_quantity, $left, 6) === 0 ? bcsub($r->service_accrual_pkr, $value, 4) : D::round(bcmul($m->billed_service_quantity, $r->unit_rate_pkr, 18));
+            if ($line->unit_id !== $r->billing_unit_id || bccomp($line->unit_price, $r->unit_rate_pkr, 8) || bccomp($expected, $line->net_amount, 4) || bccomp($expected, $m->accrued_value_relieved, 4)) {
                 Guard::fail('Bill must exactly match the frozen receipt accrual; refresh the draft after another bill posts.');
             }
             $total = bcadd($total, $expected, 4);

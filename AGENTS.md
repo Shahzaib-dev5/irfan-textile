@@ -1,5 +1,11 @@
 # Textile ERP working instructions
 
+The user clarified that multiple warehouses ARE required; only internal locations
+and racks are unwanted. Warehouse creation automatically provisions hidden stock
+storage; transaction screens select warehouses directly. See docs/MAIN_WAREHOUSE.md.
+The previously authorized local dummy reset is complete; do not repeat it for this
+clarification. Preserve stock history and vendor custody.
+
 User additionally authorized the Physical Suit Stock simplification and customer
 ledger follow-up. Reuse Inventory openings for evidenced initial stock and atomic
 Production conversions for new suits; no independent editable stock or party

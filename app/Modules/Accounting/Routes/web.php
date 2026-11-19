@@ -17,6 +17,8 @@ Route::middleware(['auth', 'active.user'])->prefix('accounting')->name('accounti
 Route::middleware(['auth', 'active.user', 'permission:accounting.finance.view'])->prefix('accounting/finance')->name('finance.')->group(function () {
     $c = FinanceController::class;
     Route::get('/', [$c, 'index'])->name('index');
+    Route::get('/expenses/create', [$c, 'expenseCreate'])->middleware('permission:accounting.finance.post')->name('expenses.create');
+    Route::post('/expenses', [$c, 'expenseStore'])->middleware('permission:accounting.finance.post')->name('expenses.store');
     Route::get('/supplier-credits', [$c, 'supplierCredit'])->middleware('permission:accounting.finance.post')->name('supplier-credit');
     Route::post('/supplier-credits', [$c, 'supplierCreditStore'])->middleware('permission:accounting.finance.post')->name('supplier-credit.store');
     Route::get('/create', [$c, 'create'])->name('create');

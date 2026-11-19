@@ -4,6 +4,174 @@
 
 `TransactionPdfLayoutTest`: 1 passed, 10 assertions. It checks that the prepared logo is embedded in the print HTML and that the PDF still renders a multi-page document. Blade view cache and PHP lint passed. Navbar and favicon assets were checked in templates; no browser visual test was run.
 
+## Local fresh start (2026-11-19)
+
+Post-reset SQL checks passed: company 1, users 2, parties/items/documents/stock movements/journal lines/audit events 0, Main Warehouse 1, Main Cashbox 1, default item categories 8, processing services 8. The command's foreign-key integrity check passed and PHP lint passed. No full application test suite was run for the reset. See [fresh start reset](FRESH_START_RESET.md).
+
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+Verification for this follow-up (PHP 8.4, isolated MariaDB test database):
+
+- Broad ProcessingFabricFlow/Processing/SimpleProcessingFlow/ProcessingWorkspace
+  run: 50 passed, 3 stale overview-redirect expectations failed (315 assertions).
+- Follow-up FabricFlow/Workspace run with new loss/handover/history cases:
+  29 passed, 2 failed (227 assertions). The remaining vendor-sidebar expectation
+  was updated to the current vendor directory. The legacy-history fixture now
+  preserves the original automatic updated_at when simulating pre-migration rows.
+- Focused rerun: 3 passed, 1 legacy-fixture failure / 48 assertions before
+  that fixture correction; final
+  history, receipt conversion/billing and cutting rerun: 3 passed / 28 assertions.
+  Final Out/In fixture and handover render rerun: 2 passed / 22 assertions.
+  Every failing case above subsequently passed; this is not a full-suite claim.
+- Edge headless desktop 1440px and mobile 390px checks passed for optional rates,
+  cutting fields, PCS retained meters, valid whole-piece number inputs, rejected
+  returns and vendor handover field submission. Compiled Inter styles loaded;
+  no JavaScript errors or page overflow. First stale-CSS fixture export was refreshed.
+- Vite build: 71 modules. Blade view cache, PHP syntax checks, focused Pint and
+  git diff whitespace check passed (Git reports existing CRLF normalization notices).
+- Local application DB migrated after a 359740-byte private backup. Read-only
+  verification confirmed all 3 historical posted processing hashes and unchanged
+  counts: 6 documents, 6 stock movements, 6 value entries, 1 receipt line.
+  No live stock, receipt or bill was posted as a test.
+
+Coverage includes partial M-to-PCS receipts, differing actual rates per receipt,
+receipt-based bill matching without stock replay, normal/abnormal losses,
+conservation/fractional-piece/overreceipt rejection, pending versus explicit-zero
+rates, atomic cutting/dispatch rollback and retry, direct PCS vendor handover,
+legacy price/hash fallback, permissions, and existing processing workflows.
+
+## Fabric Out dispatch-agreed rates (2026-11-18)
+
+PHP 8.4 / isolated MariaDB: ProcessingFabricFlowTest, ProcessingTest and
+SimpleProcessingFlowTest ran 39 tests: 38 passed, one failed solely because its
+print-warning expectation was stale (229 assertions, 161.33 s). Updated that
+assertion to the existing draft warning, then reran it plus the two new rate
+tests: **3 passed / 18 assertions**, 53.23 s. All rate-related cases passed in
+the broader run, including explicit 500/SUIT embroidery, handover costing,
+rate-less contracts, immutable entered rates, blank rejection and explicit zero.
+
+`FABRIC_BROWSER_FIXTURES=1` produced synthetic forms; `node
+tests/Frontend/fabric-browser.mjs` passed desktop/mobile Out/In with no JS errors.
+It verifies empty required rate, manual entry surviving date changes, and handover
+field submission. Blade compilation, PHP formatting and whitespace checks passed.
+Migration applied locally after backup; no live transaction or historical-rate
+deletion was performed. Full suite, concurrent workers and exact MySQL 8.4 remain
+unverified. See DISPATCH_AGREED_RATES.md for scope and deployment.
+
+## Direct purchase measurement workflow (2026-11-17)
+
+Final focused rerun after the last persistence/style changes: **9 tests / 83
+assertions passed**, 58.65 s. Regenerated desktop/mobile browser fixtures passed
+again. Local verification confirmed 0 items, 0 receipts and 0 textile definitions;
+the migration did not create demo business data. THAAN is active with count precision 0.
+
+- PHP 8.4 / isolated MariaDB: DirectFabricPurchaseTest, ProcessingFabricFlowTest
+  and the two piece-unit catalog cases: **23 passed / 176 assertions**, 91.77 s.
+  Initial direct-purchase run: 7 passed / 73 assertions.
+- Coverage includes inline processed/grey item creation, no-invoice receipt,
+  later exact-cost supplier bill without stock replay, 10 THAAN / 120 SET / 600 M
+  evidence and pricing, different units under one shared definition, rejection
+  of fractional counts/unsubstantiated rate quantities, atomic rollback, permission
+  separation, duplicate submission and changed-payload rejection.
+- `node --test tests/Frontend/direct-purchase.test.mjs tests/Frontend/catalog.test.mjs`:
+  **12 passed**. Vite build: **71 modules**. Blade compilation and Pint passed.
+- Synthetic browser check: `DIRECT_PURCHASE_BROWSER_FIXTURES=1` during the feature
+  tests, then `node tests/Frontend/direct-purchase-browser.mjs`. Desktop/mobile
+  tested inline fields, submitted measurement, optional invoice, rate calculation,
+  independent lines and overflow; no JavaScript exceptions. Screenshots inspected.
+  No live transaction submitted. Private fixture/screenshots are under
+  `storage/framework/testing/direct-purchase-browser`.
+- Live additive migration succeeded after backup. No production/MySQL 8.4/full
+  suite/concurrent-worker claim. Earlier unrelated catalog UI expectation failures
+  remain recorded below.
+
+## Processed fabric piece units (2026-11-17)
+
+Final focused run: **6 tests / 56 assertions passed**, 85.44 seconds: the two
+new CatalogWorkspaceTest piece-unit cases and all DirectFabricPurchaseTest cases.
+Checks cover protected identity, invalid fabric units/rolls, whole PCS quantity,
+atomic rejection of fractional receipt quantity, stock display and supplier cost.
+
+Frontend unit checks: 9 passed (`node --test tests/Frontend/catalog.test.mjs`).
+Vite build: 70 modules passed (required sandbox escalation for config access).
+Pint on changed PHP files, Blade compilation and git diff whitespace checks pass.
+
+Broader CatalogWorkspaceTest / TextileMasterDataTest / DirectFabricPurchaseTest
+run: 26 passed, 4 failed, 260 assertions. All three newly added tests passed.
+The four failures concern existing UI expectations: two expect /catalog to
+render an overview although its route redirects to items; one expects removed
+category help text; one expects 20-item pagination although the controller uses
+5. These unrelated expectations were not changed. PHP 8.4 / isolated MariaDB
+test schema; no live stock was posted. Full suite and MySQL 8.4 not verified.
+
+## Direct warehouse transfer confirmation (2026-11-16)
+
+**7 tests / 58 assertions passed**, 49.763 seconds, PHP 8.4.9 / isolated MariaDB:
+DirectWarehouseTransferTest and MainWarehouseTest. Coverage includes immediate
+HTTP posting with correct source/destination balances, exact replay without duplicate
+movement, changed-payload rejection, rollback of the draft/positions/movements after
+an injected final posting failure, denial without inventory.post, confirming an
+existing draft from edit, multi-warehouse transfers and warehouse protections.
+Transfer form rendering verifies Confirm transfer replaces Save draft for review.
+Changed PHP files passed Pint; Blade compilation and diff checks passed. No live
+stock transfer, database reset or migration was performed. No additional interactive
+browser run or full-suite/concurrency test was performed for this button/action change.
+
+## Warehouse-only selection clarification (2026-11-16)
+
+Current regression: **30 tests / 165 assertions passed**, 120.597 seconds on PHP
+8.4.9 / isolated MariaDB. Suites: MainWarehouseTest, SalesTest, PhysicalSuitStockTest
+and DirectFabricPurchaseTest. Tests now verify multiple warehouse creation, unique
+codes, automatic internal storage, blocked location management, transfers between
+warehouses, deactivation with stock and held returns in a renamed branch warehouse.
+The updated browser check passed with two warehouses: independent selection in
+added rows, warehouse names without internal locations, no JS exceptions and no
+desktop/mobile overflow. Screenshots were visually reviewed. Build (70 modules),
+Pint, Blade compilation and diff checks passed. No live data reset or schema
+migration was performed for this clarification. Full-suite, exact MySQL 8.4 and
+concurrency verification remain outside these checks.
+
+## Earlier single-warehouse interpretation (superseded)
+
+Final combined regression: **42 tests / 227 assertions passed**, 103.567 seconds.
+Suites: MainWarehouseTest, SalesTest, ProcessingFabricFlowTest, PhysicalSuitStockTest
+and DirectFabricPurchaseTest. `git diff --check` and new PHP syntax checks passed;
+application caches were cleared after verification.
+
+PHP 8.4.9, isolated `irfan_textile_phase3_test` on local MariaDB. Focused rerun:
+**7 tests / 54 assertions passed** (MainWarehouseTest, DirectFabricPurchaseTest,
+and automatic vendor-custody creation). Tests cover fixed receiving fields, duplicate
+warehouse/location request rejection, address editing, opening stock, disabled
+transfer entry, reset preview and exact-database/backup guards, direct purchase
+stock/payable posting, and custody creation without another warehouse.
+SalesTest additionally covers damaged returns held in Main Warehouse and rejected
+by stock picking. Earlier screen assertions for the old transfer link, Processing
+overview's redirect and the already-renamed direct-purchase heading were updated.
+
+`node tests/Frontend/main-warehouse-browser.mjs` passed against synthetic PHPUnit
+HTML: automatic destination submits correctly, added Alpine rows retain it, no
+location selector, no JS exceptions, no desktop/mobile overflow. Both captured
+screenshots were visually reviewed. No live transaction was submitted by the browser.
+The first sandboxed browser run timed out; the approved headless run exposed and
+then passed after correcting quoting in the test's selector expression.
+
+Vite build passed (70 modules), Blade compilation passed and changed files were
+formatted with Pint. The authorized local dummy reset completed and checked every
+declared FK for orphan references before commit. Live verification found one MAIN
+warehouse, one internal MAIN ledger location, zero documents and six retained
+parties. The private full SQL recovery dump and exact deletion scope are documented
+in [MAIN_WAREHOUSE.md](MAIN_WAREHOUSE.md). No schema migration was run.
+
+Exact MySQL 8.4 validation, concurrency stress and full-suite verification were not
+performed for this follow-up. This is not a migration of real operational data.
+
 ## New Party old unpaid balance (2026-11-16)
 
 Final focused regression: **28 tests / 257 assertions passed**, PHP 8.4.9,

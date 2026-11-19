@@ -17,6 +17,7 @@ use App\Models\SettlementAllocation;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Modules\Accounting\Services\BankReconciliationService;
+use App\Modules\Accounting\Services\CompanyExpense;
 use App\Modules\Accounting\Services\FinanceAccounts;
 use App\Modules\Accounting\Services\FinanceReports;
 use App\Modules\Accounting\Services\SupplierCreditService;
@@ -29,6 +30,28 @@ use Tests\TestCase;
 
 class FinanceTest extends TestCase
 {
+    public function test_company_expense_creates_gl_and_posts_balanced_cash_journal_once(): void
+    {
+        $this->get(route('finance.expenses.create'))->assertOk()->assertSee('Company expense');
+        $input = [
+            'idempotency_key' => (string) Str::uuid(), 'document_date' => $this->date,
+            'bank_account_id' => $this->bank->id, 'new_expense_code' => '5300',
+            'new_expense_name' => 'Staff refreshments', 'amount' => '500',
+            'reference' => 'TEA-001', 'description' => 'Tea for office staff',
+        ];
+        $expense = app(CompanyExpense::class);
+        $document = $expense->confirm($this->admin->id, $input);
+        $account = LedgerAccount::where('code', '5300')->firstOrFail();
+        $this->assertSame('expense', $account->account_type);
+        $this->assertDatabaseHas('journal_lines', ['journal_entry_id' => $document->id, 'ledger_account_id' => $account->id, 'debit' => '500.0000']);
+        $this->assertDatabaseHas('journal_lines', ['journal_entry_id' => $document->id, 'ledger_account_id' => $this->bank->ledger_account_id, 'credit' => '500.0000']);
+        $count = JournalLine::count();
+        $this->assertSame($document->id, $expense->confirm($this->admin->id, $input)->id);
+        $this->assertSame($count, JournalLine::count());
+        $this->post(route('finance.expenses.store'), array_replace($input, ['idempotency_key' => (string) Str::uuid(), 'new_expense_code' => null, 'new_expense_name' => null, 'expense_account_id' => $account->id]))->assertRedirect();
+        $this->assertSame($count + 2, JournalLine::count());
+    }
+
     public function test_guided_party_forms_show_existing_advance_and_keep_advanced_form_available(): void
     {
         $bill = $this->billItem();

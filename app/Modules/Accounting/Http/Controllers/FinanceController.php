@@ -19,6 +19,7 @@ use App\Models\PurchaseReturnLine;
 use App\Models\SettlementAllocation;
 use App\Modules\Accounting\Http\Requests\FinanceRequest;
 use App\Modules\Accounting\Services\BankReconciliationService;
+use App\Modules\Accounting\Services\CompanyExpense;
 use App\Modules\Accounting\Services\FinanceAccounts;
 use App\Modules\Accounting\Services\FinanceDocument;
 use App\Modules\Accounting\Services\FinanceReports;
@@ -32,6 +33,27 @@ use Illuminate\Support\Facades\DB;
 
 class FinanceController extends Controller
 {
+    public function expenseCreate(Request $request)
+    {
+        abort_unless($request->user()->hasPermissionTo('accounting.finance.post'), 403);
+        $banks = BankAccount::with('ledgerAccount')->where('is_active', true)
+            ->whereHas('ledgerAccount', fn ($q) => $q->where('is_active', true)->where('is_postable', true)
+                ->where('account_type', 'asset')->where('control_type', 'bank_cash'))
+            ->orderBy('account_kind')->orderBy('name')->get();
+        $expenses = LedgerAccount::where('is_active', true)->where('is_postable', true)
+            ->where('account_type', 'expense')->where('control_type', 'none')->orderBy('code')->get();
+        $defaultCashbox = $banks->firstWhere('account_kind', 'cash')?->id;
+
+        return view('module.accounting::finance.expense', compact('banks', 'expenses', 'defaultCashbox'));
+    }
+
+    public function expenseStore(Request $request, CompanyExpense $service)
+    {
+        $document = $service->confirm($request->user()->id, $request->all());
+
+        return redirect()->route('finance.show', $document)->with('status', 'Company expense confirmed.');
+    }
+
     public function supplierCredit(Request $request)
     {
         $request->validate(['invoice' => 'nullable|integer|exists:purchase_invoices,document_id']);
@@ -71,7 +93,10 @@ class FinanceController extends Controller
         };
         abort_unless($request->user()->hasPermissionTo($permission), 403);
         $accounts = LedgerAccount::where('is_active', true)->where('is_postable', true)->orderBy('code')->get();
-        $banks = BankAccount::where('is_active', true)->orderBy('name')->get();
+        $banks = BankAccount::where('is_active', true)->whereHas('ledgerAccount', fn ($q) => $q
+            ->where('is_active', true)->where('is_postable', true)
+            ->where('control_type', 'bank_cash')->where('account_type', 'asset'))->orderBy('name')->get();
+        $defaultCashbox = $banks->where('account_kind', 'cash')->sortBy('id')->first()?->id;
         $roles = PartyRole::with('party', 'type')->where('is_active', true)->whereHas('type', fn ($q) => $q->whereIn('code', ['supplier', 'vendor', 'customer']))->get();
 
         $openItems = app(FinanceReports::class)->availableItems();
@@ -83,13 +108,14 @@ class FinanceController extends Controller
                 'accounts' => $accounts->whereIn('control_type', ['party_payable', 'party_receivable'])->map(fn ($a) => ['id' => (string) $a->id, 'name' => $a->code.' — '.$a->name, 'customer' => $a->control_type === 'party_receivable'])->values(),
                 'items' => $openItems->map(fn ($i) => ['id' => (string) $i->id, 'role' => (string) $i->journalLine->party_role_id, 'account' => (string) $i->journalLine->ledger_account_id, 'debit' => bccomp($i->journalLine->debit, '0', 4) > 0, 'amount' => $i->outstanding, 'number' => $i->journalLine->document->number, 'date' => $i->journalLine->document->document_date->format('Y-m-d')])->values(),
                 'banks' => $banks->map(fn ($b) => ['id' => (string) $b->id, 'kind' => $b->account_kind])->values(),
+                'defaultCashbox' => $defaultCashbox,
                 'old' => $request->session()->getOldInput(),
             ];
 
             return view('module.accounting::finance.guided', compact('kind', 'banks', 'guide'));
         }
 
-        return view('module.accounting::finance.form', compact('kind', 'accounts', 'banks', 'roles', 'openItems'));
+        return view('module.accounting::finance.form', compact('kind', 'accounts', 'banks', 'roles', 'openItems', 'defaultCashbox'));
     }
 
     public function store(FinanceRequest $request, FinanceService $service)

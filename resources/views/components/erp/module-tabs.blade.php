@@ -31,7 +31,7 @@ $subtabs = match ($activeModule) {
         ['Physical suits', 'physical-stock.index', [], 'physical-stock.index', 'inventory.view'], ['Processed fabric', 'physical-stock.fabric', [], 'physical-stock.fabric', 'inventory.view'],
         ['Add ready suits', 'physical-stock.create', [], 'physical-stock.create', 'inventory.manage'],
     ],
-    'warehouses' => [['Warehouse list', 'warehouses.index', [], 'warehouses.index', 'warehouses.view'], ['Add warehouse', 'warehouses.create', [], 'warehouses.create', 'warehouses.manage']],
+    'warehouses' => [['Warehouses', 'warehouses.index', [], 'warehouses.index', 'warehouses.view'], ['Add warehouse', 'warehouses.create', [], 'warehouses.create', 'warehouses.manage']],
     'parties' => [['Party directory', 'parties.index', [], 'parties.index', null], ['Party ledger', 'parties.ledger', [], 'parties.ledger', 'accounting.finance.view']],
     'purchasing' => array_merge(collect(App\Modules\Purchasing\Services\PurchasingWorkspace::PAGES)->map(fn ($page) => [$page['title'], 'purchasing.'.$page['path'].'.index', [], 'purchasing.'.$page['path'].'.index', 'purchasing.documents.view'])->values()->all(), [['Payables', 'purchasing.payables', [], 'purchasing.payables', 'purchasing.documents.view'], ['Prices & history', 'purchasing.history', [], 'purchasing.history', 'purchasing.documents.view']]),
     'processing' => [
@@ -45,6 +45,7 @@ $subtabs = match ($activeModule) {
     'finished-goods' => [['Packing records', 'finished-goods.index', [], 'finished-goods.index', 'finished-goods.view'], ['Specifications', 'finished-goods.specifications', [], 'finished-goods.specifications', 'finished-goods.view'], ['Batches & costing', 'finished-goods.batches', [], 'finished-goods.batches', 'finished-goods.view'], ['Stock & quality', 'finished-goods.inventory', [], 'finished-goods.inventory', 'finished-goods.view']],
     'sales' => array_merge(collect(['order' => 'Sale orders', 'dispatch' => 'Sale Dispatch', 'invoice' => 'Sale Invoices', 'return' => 'Sale Returns', 'credit' => 'Returns Credit notes'])->map(fn ($label, $kind) => [$label, 'sales.index', ['kind' => $kind], 'sales.index', 'sales.documents.view'])->values()->all(), [['Availability', 'sales.availability', [], 'sales.availability', 'sales.documents.view']]),
     'finance' => [
+        ['Company expenses', 'finance.expenses.create', [], 'finance.expenses.create', 'accounting.finance.post'],
         ['General ledger statement', 'finance.report', ['report' => 'ledger'], 'finance.report', 'accounting.finance.view'], ['Cash payable voucher', 'finance.create', ['kind' => 'payment'], 'finance.create', 'accounting.finance.post'],
         ['Cash receipt voucher', 'finance.create', ['kind' => 'receipt'], 'finance.create', 'accounting.finance.post'],
         ['Old unpaid balances', 'finance.create', ['kind' => 'opening'], 'finance.create', 'accounting.finance.opening'],
@@ -70,7 +71,7 @@ $isSubtabActive = function (string $routeName, array $parameters) {
     <div class="flex gap-1 overflow-x-auto py-2">
         @foreach($modules as $key => [$label, $route, $parameters, $permission])
             @if(($permission && $user->hasPermissionTo($permission)) || ($key === 'parties' && $canSeeParties))
-                <a href="{{ route($route, $parameters) }}" @if($activeModule === $key) aria-current="page" @endif class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {{ $activeModule === $key ? 'bg-emerald-50 font-semibold text-brand' : 'text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
+                <a target="_blank" rel="noopener" href="{{ route($route, $parameters) }}" @if($activeModule === $key) aria-current="page" @endif class="whitespace-nowrap rounded-lg px-3 py-2 text-sm {{ $activeModule === $key ? 'bg-emerald-50 font-semibold text-brand' : 'text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
             @endif
         @endforeach
     </div>
@@ -81,7 +82,7 @@ $isSubtabActive = function (string $routeName, array $parameters) {
         @foreach($subtabs as [$label, $route, $parameters, $routeName, $permission])
             @if(!$permission || $user->hasPermissionTo($permission))
                 @php($active = $isSubtabActive($routeName, $parameters))
-                <a href="{{ route($route, $parameters) }}" @if($active) aria-current="page" @endif class="whitespace-nowrap rounded-md px-3 py-1.5 text-xs {{ $active ? 'bg-white font-semibold text-brand shadow-sm' : 'text-slate-600 hover:bg-white' }}">{{ $label }}</a>
+                <a target="_blank" rel="noopener" href="{{ route($route, $parameters) }}" @if($active) aria-current="page" @endif class="whitespace-nowrap rounded-md px-3 py-1.5 text-xs {{ $active ? 'bg-white font-semibold text-brand shadow-sm' : 'text-slate-600 hover:bg-white' }}">{{ $label }}</a>
             @endif
         @endforeach
     </div>

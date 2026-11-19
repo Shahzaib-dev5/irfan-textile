@@ -1,5 +1,130 @@
 # Project state and phase completion reports
 
+## Local fresh start (2026-11-19)
+
+User-authorized local dummy data reset is complete. Company and default configuration remain; transactions, parties, items, and stock are empty. See [fresh start reset](FRESH_START_RESET.md) for backup, exact scope, and checks. Earlier row counts below describe the pre-reset state.
+
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+Implemented and activated locally after private backup. Final focused checks:
+3 tests / 28 assertions and 2 render/handover tests / 22 assertions passed;
+desktop/mobile browser checks passed. Earlier regression failures were corrected
+and rerun, as detailed in TESTING.md. All 3 pre-existing posted processing payloads
+remain valid. New tables are fabric_measurement_items and fabric_cuttings; job
+pending-rate and receipt actual-pricing columns are additive. Existing Out/In
+screens plus the read-only cutting record are ready for operator review. File list,
+limits and suggested commit are in FABRIC_CONVERSION.md. Stop at Phase 12.
+
+## Dispatch-agreed vendor rates (2026-11-18)
+
+Fabric Out and direct vendor handover now require manually agreed PKR rates and
+do not depend on published contracts. Job snapshots and audit evidence preserve
+the exact rate for receipt costing and billing. Historical contracts and advanced
+jobs remain available; legacy rate pages are labelled accordingly. One nullable
+FK migration applied locally after backup; no history deleted or live posting
+performed. Existing routes are reused. Files, schema, known limits and suggested
+commit: [DISPATCH_AGREED_RATES.md](DISPATCH_AGREED_RATES.md). Actual checks in
+TESTING.md. Focused rerun passed 3 tests / 18 assertions after correcting one
+stale print-text assertion; all rate cases in the broader 39-test run passed.
+Desktop/mobile Out/In browser checks passed. Ready for operator review.
+
+## Direct purchase with flexible measurements (2026-11-17)
+
+Implemented the authorized direct-purchase workflow: simple inline item creation,
+per-purchase stock measurement, original thaan/set/meter evidence and selectable
+rate basis. Invoice-free receipts post stock/GRNI and expose Create supplier bill;
+invoice-backed confirmation still atomically posts receipt, bill and optional
+payment. Whole counts, unit-separated stock, exact costs, permissions and full
+payload replay protection are enforced.
+
+Local additive migration applied after a private backup. New tables are
+textile_definitions, receipt_measurements and direct_purchase_confirmations;
+items gains a nullable definition FK/unique definition-unit pair, fabric composition
+becomes nullable for inline setup, and THAAN is provisioned. Existing document,
+stock and accounting tables are reused without replay. No live purchase was posted.
+Routes are the existing Inventory direct-purchase GET/POST and Purchasing receipt
+and bill screens. Files, deployment, limitations and suggested commit are in
+[DIRECT_PURCHASE_MEASUREMENTS.md](DIRECT_PURCHASE_MEASUREMENTS.md).
+
+Verification: 23 tests / 176 assertions passed across direct purchasing,
+Processing Fabric Flow and focused catalog regression; 12 JavaScript checks,
+71-module build and synthetic desktop/mobile browser flow passed. Original
+measurement totals do not decrement on issue; primary-unit stock does. No automatic
+M-to-PCS Processing conversion is added. Exact MySQL 8.4, full suite and concurrent
+worker tests remain unverified. Final focused rerun: 9 tests / 83 assertions passed;
+regenerated browser checks passed. Ready for operator review.
+
+## Authorized unused textile-item deletion (2026-11-17)
+
+At the user's request, deleted all 9 local textile items after confirming there
+were no stock lots, purchase/sales lines, processing jobs or manufacturing batches.
+Removed their dependent 6 routes/6 steps, 3 BOMs/5 lines, 1 variant and 6 fabric
+specifications in one transaction with foreign keys enabled and deletion audits.
+Categories, units, parties and warehouses are preserved. This was not a repeat
+of the warehouse dummy reset. No schema change. Recovery backup is private:
+`storage/app/private/before-item-delete-20261117.sql` (315582 bytes).
+The deferred-unit purchase workflow remains a proposal, not implemented.
+
+## Processed fabric piece-unit follow-up (2026-11-17)
+
+Catalog change ready for review: 6 focused tests / 56 assertions, 9 frontend
+checks, build, Pint and Blade compilation passed. Broader run has four existing
+UI expectation failures detailed in TESTING.md.
+
+Catalog supports processed fabric in M or whole PCS, retaining composition,
+stock management and protected SKU measurement identities. Roll tracking is
+M-only; the form clears it when selecting PCS. Existing catalog item create/edit
+routes are reused. No tables, migrations, live data edits or stock replay.
+
+Changed implementation: CatalogService, CatalogWorkspace, item-fields.blade.php,
+resources/js/catalog.js; coverage in CatalogWorkspaceTest,
+DirectFabricPurchaseTest and tests/Frontend/catalog.test.mjs. README, master
+guides, business rules, architecture, PRD, overview, phases, deployment, changelog
+and testing documentation describe the new unit choice. Suggested commit:
+`feat(catalog): support processed fabric measured in pieces`.
+
+Limit: this extends catalog classification and existing whole-piece stock entry;
+Processing still requires matching input/output base units. Meter-to-piece
+Processing returns are not implemented by this follow-up. Exact MySQL 8.4 and
+browser interaction were not tested. See TESTING.md for actual check results.
+
+## Direct warehouse transfer confirmation (2026-11-16)
+
+Inventory transfer POST/PUT now calls InventoryService::confirmTransfer: save and
+post under one outer transaction/company lock. Transfer forms show Confirm transfer;
+both inventory.manage and inventory.post are required. Existing drafts can also be
+confirmed from edit. Openings/adjustments retain their existing behavior. No new
+routes, tables or migrations; no application data was posted or reset. Files:
+InventoryService, InventoryController, SaveInventoryRequest, Inventory form/list
+and transfer navigation. Verification: DirectWarehouseTransferTest and
+MainWarehouseTest (results in TESTING.md). Suggested commit:
+`feat(inventory): confirm warehouse transfers directly`.
+
+Ready for review: 7 tests / 58 assertions passed; Blade compilation, Pint and
+diff checks passed. Full-suite/concurrent posting and exact MySQL 8.4 checks remain
+unverified for this follow-up.
+
+## Main Warehouse follow-up (2026-11-16)
+
+Corrected to multiple warehouses without internal location setup. Ready for
+operator review: 30 tests / 165 assertions passed, plus two-warehouse desktop/mobile
+browser verification, Vite build and Blade compilation. This correction performs
+no data reset. The earlier authorized dummy reset retains its private SQL backup.
+
+Clarification: multiple warehouses are supported. Only internal location/rack
+setup is removed. Each warehouse provisions its hidden stock storage automatically;
+receipts and transfers select warehouse names directly. Vendor custody and held
+quality remain tracked. No schema migration or additional data reset is needed.
+The earlier dummy reset has a private recovery backup. Current behavior is in
+[Main Warehouse implementation and reset scope](MAIN_WAREHOUSE.md).
+
 ## New Party old unpaid balance (2026-11-16)
 
 The authorized New Party follow-up adds an optional receive/pay opening section

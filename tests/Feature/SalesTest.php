@@ -115,6 +115,23 @@ class SalesTest extends TestCase
         $this->invalid(fn () => $this->sales->confirm($this->admin->id, array_replace($credit, ['idempotency_key' => (string) Str::uuid()])), 'returned quantity');
     }
 
+    public function test_damaged_return_in_main_warehouse_is_held_and_cannot_be_picked(): void
+    {
+        $this->source->warehouse->update(['code' => 'BRANCH', 'name' => 'Branch Warehouse']);
+        $dispatch = $this->salesDispatch($this->salesOrder('10'), '10');
+        $data = $this->salesData('return', [[
+            'sales_dispatch_line_id' => SalesDispatch::findOrFail($dispatch->id)->lines->first()->id,
+            'base_quantity' => '2', 'warehouse_location_id' => $this->source->id,
+            'lot_number' => 'HELD-MAIN', 'condition_code' => 'damaged',
+        ]]);
+        $data['warehouse_id'] = $this->source->warehouse_id;
+        $return = $this->sales->confirm($this->admin->id, $data);
+        $position = SalesReturn::findOrFail($return->id)->lines->first()->position;
+        $this->assertSame('held', $position->lot->quality_status);
+        $this->assertSame($this->source->id, $position->warehouse_location_id);
+        $this->invalid(fn () => app(StockLedger::class)->position($position->id, $this->date, true), 'released');
+    }
+
     public function test_over_dispatch_over_return_and_wrong_customer_are_atomic(): void
     {
         $o = $this->salesOrder('20');

@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\StockPosition;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -36,6 +37,9 @@ class PurchasingWorkspace
         $supplierId = (int) ($header?->supplier_party_role_id ?? $header?->payee_party_role_id ?? $selectedOrder?->supplier_party_role_id ?? $selectedReceipt?->supplier_party_role_id ?? old('supplier_party_role_id', $filter['supplier'] ?? 0));
         $warehouseId = (int) ($header?->warehouse_id ?? $header?->ship_to_warehouse_id ?? $selectedOrder?->ship_to_warehouse_id ?? ($kind === 'return' ? ($filter['warehouse'] ?? $selectedReceipt?->warehouse_id) : $selectedReceipt?->warehouse_id) ?? old('warehouse_id', $filter['warehouse'] ?? 0));
         $directReceipt = $kind === 'receipt' && (request()->boolean('direct') || ($editing && $header->lines->isNotEmpty() && $header->lines->every(fn ($line) => $line->purchase_order_line_id === null)));
+        if (! $warehouseId && Warehouse::where('is_active', true)->count() === 1) {
+            $warehouseId = (int) Warehouse::where('is_active', true)->value('id');
+        }
         $contextReady = $kind === 'order' || ($supplierId && ($kind === 'bill' || $warehouseId));
 
         return compact('orders', 'receipts', 'selectedOrder', 'selectedReceipt', 'supplierId', 'warehouseId', 'contextReady', 'directReceipt');

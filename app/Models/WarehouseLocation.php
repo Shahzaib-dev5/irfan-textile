@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WarehouseLocation extends InventoryRecord
 {
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->location_type === 'contractor'
+            ? 'With vendor: '.($this->contractor?->role?->party?->legal_name ?? 'Vendor custody')
+            : $this->warehouse->name;
+    }
+
     protected function casts(): array
     {
         return ['is_active' => 'boolean'];

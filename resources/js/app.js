@@ -9,6 +9,7 @@ import { financeGuide } from './finance';
 import { processingDocument } from './processing';
 import { purchasingDocument } from './purchasing';
 import { catalogItem } from './catalog';
+import { directPurchase } from './direct-purchase';
 import { productionForm } from './production';
 import { packingForm, packRecipe } from './packing';
 
@@ -20,6 +21,7 @@ Alpine.data('salesForm',salesForm);
 Alpine.data('processingDocument', processingDocument);
 Alpine.data('purchasingDocument', purchasingDocument);
 Alpine.data('catalogItem', catalogItem);
+Alpine.data('directPurchase', directPurchase);
 Alpine.data('productionForm', productionForm);
 Alpine.data('packingForm',packingForm);
 Alpine.data('packRecipe',packRecipe);

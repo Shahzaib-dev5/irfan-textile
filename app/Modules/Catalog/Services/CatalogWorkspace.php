@@ -13,15 +13,15 @@ class CatalogWorkspace
     public const SCREENS = [
         'items' => ['title' => 'Textile items', 'new' => 'New textile item', 'help' => 'Create the actual fabric or material SKU used in purchases and stock documents. Choose its type first. Quantities are recorded through inventory documents.'],
         'categories' => ['title' => 'Item categories', 'new' => 'New category', 'help' => 'Categories group items, such as Cotton fabric or Packing materials. A category is not a stock item and cannot be received or dispatched.'],
-        'units' => ['title' => 'Units of measure', 'new' => 'New unit', 'help' => 'Choose how quantities are measured. Fabric uses meters (M); complete finished suits use SUIT. Standard units are already available.'],
+        'units' => ['title' => 'Units of measure', 'new' => 'New unit', 'help' => 'Fabric uses M, PCS, SET or THAAN; complete finished suits use SUIT. Standard units are already available.'],
         'designs' => ['title' => 'Designs', 'new' => 'New design', 'help' => 'Name a design and optionally give it a collection or season label. Link it to a finished SKU through Finished product variants.'],
         'colors' => ['title' => 'Colors', 'new' => 'New color', 'help' => 'Maintain reusable color names and optional display swatches. A color record creates no stock or dyeing job.'],
         'variants' => ['title' => 'Finished product variants', 'new' => 'New finished variant', 'help' => 'Link one finished SUIT item to a design, color and component count. This defines the product; it does not manufacture suits.'],
     ];
 
     public const TYPES = [
-        'grey_fabric' => ['title' => 'Grey / kora fabric', 'help' => 'Unprocessed fabric bought from a supplier. Stock is measured in meters.', 'example' => 'Grey cotton / M'],
-        'processed_fabric' => ['title' => 'Processed fabric', 'help' => 'Fabric after a processing stage, such as dyed cotton. Stock stays in meters.', 'example' => 'Dyed cotton / M'],
+        'grey_fabric' => ['title' => 'Grey / kora fabric', 'help' => 'Unprocessed fabric bought from a supplier. Choose its actual stock measurement.', 'example' => 'Grey cotton / M'],
+        'processed_fabric' => ['title' => 'Processed fabric', 'help' => 'Fabric after processing, such as dyed cotton or embroidered pieces. Choose M or whole PCS, SET or THAAN for this item.', 'example' => 'Dyed cotton / M or embroidered fabric / PCS'],
         'trim' => ['title' => 'Material / consumable', 'help' => 'Thread, lace or other physical supplies. Choose their actual measurement unit.', 'example' => 'Thread / KG or PCS'],
         'packaging' => ['title' => 'Packaging material', 'help' => 'Bags, boxes and other packing supplies. Choose the unit you count or measure.', 'example' => 'Suit bag / PCS'],
         'finished' => ['title' => 'Finished product', 'help' => 'Use SUIT for an individual finished variant, or PACK for a separate packed assortment. Define PACK contents under Finished goods.', 'example' => 'Individual suit / SUIT or assortment / PACK'],
@@ -56,8 +56,8 @@ class CatalogWorkspace
             $fabric[$field] = $readOnly || $stockReferenced ? $item->fabricSpecification?->$field : old('fabric.'.$field, $item->fabricSpecification?->$field);
         }
 
-        return ['type' => $value('item_type', ''), 'unit' => $value('base_unit_id', ''), 'stocked' => (bool) $value('is_stocked', true), 'rolls' => (bool) $value('track_rolls', false), 'sku' => $value('sku', ''), 'name' => $value('name', ''), 'category' => $value('category_id', ''), 'active' => (bool) $value('is_active', true), 'description' => $value('description', ''), 'fabric' => $fabric, 'identityLocked' => (bool) $identityLocked, 'stockReferenced' => (bool) $stockReferenced, 'skuLocked' => (bool) $skuLocked, 'bomReferenced' => (bool) $bomReferenced, 'readOnly' => $readOnly, 'types' => self::TYPES,
-            'units' => Unit::orderBy('name')->get(['id', 'code', 'name', 'dimension', 'is_active'])->toArray()];
+        return ['type' => $value('item_type', ''), 'unit' => $value('base_unit_id', ''), 'stocked' => (bool) $value('is_stocked', true), 'rolls' => (bool) $value('track_rolls', false), 'sku' => $value('sku', ''), 'name' => $value('name', ''), 'category' => $value('category_id', ''), 'active' => (bool) $value('is_active', true), 'description' => $value('description', ''), 'fabric' => $fabric, 'identityLocked' => (bool) $identityLocked, 'stockReferenced' => (bool) $stockReferenced, 'compositionRequired' => ! $item->textile_definition_id, 'skuLocked' => (bool) $skuLocked, 'bomReferenced' => (bool) $bomReferenced, 'readOnly' => $readOnly, 'types' => self::TYPES,
+            'units' => Unit::orderBy('name')->get(['id', 'code', 'name', 'dimension', 'decimal_places', 'is_active'])->toArray()];
     }
 
     public function alternateUnits(Item $item)

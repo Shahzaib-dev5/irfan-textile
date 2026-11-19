@@ -1,5 +1,38 @@
 # Business rules and integrity contracts
 
+## Fabric conversion and actual receipt rates (2026-11-18)
+
+Fabric Out supports atomic warehouse M-to-PCS cutting and optional pending rates.
+Fabric In supports actual PCS returns against dispatched M, retained-meter/loss
+reconciliation, and per-receipt actual rate/unit snapshots used by vendor bills.
+Original stock and rates are retained. This supersedes earlier same-unit-only and
+mandatory dispatch-rate guidance below. Schema, workflows, files, limits and review
+status: [Fabric conversion](FABRIC_CONVERSION.md).
+
+Processing rate follow-up (2026-11-18): Fabric Out and direct vendor handover
+record the actual agreed rate per dispatch without a published contract. Historical
+job rates remain frozen; advanced contracts are retained. See [dispatch-agreed
+rates](DISPATCH_AGREED_RATES.md) for the nullable-FK migration and limits.
+
+## Direct purchase measurement follow-up (2026-11-17)
+
+Direct purchase now creates missing fabric/material definitions inline, selects
+actual receipt units (fabric M/PCS/SET/THAAN), and permits an invoice-free GRN
+followed by a matched supplier bill. Shared definitions retain separate stock
+identities per unit; optional thaan/set/meter totals are original receipt evidence,
+not additional stock balances. One additive migration is applied locally; existing
+stock units and posted costs are preserved. This supersedes earlier M-only/PCS-only
+purchase guidance. Details and limits: [Direct purchase measurements](DIRECT_PURCHASE_MEASUREMENTS.md).
+
+## Main Warehouse follow-up (2026-11-16)
+
+Clarification: multiple warehouses are supported. Only internal location/rack
+setup is removed. Each warehouse provisions its hidden stock storage automatically;
+receipts and transfers select warehouse names directly. Vendor custody and held
+quality remain tracked. No schema migration or additional data reset is needed.
+The earlier dummy reset has a private recovery backup. Current behavior is in
+[Main Warehouse implementation and reset scope](MAIN_WAREHOUSE.md).
+
 ## Old unpaid balance on New Party (2026-11-16)
 
 Optional opening amounts require Finance opening permission, an assigned business
@@ -123,7 +156,8 @@ See [SIMPLE_ADMIN_FLOW.md](SIMPLE_ADMIN_FLOW.md).
 
 ## Guided Textile master follow-up (2026-10-22)
 
-The simplified item form does not change master rules: fabric M/stocked with
+The simplified item form preserves master rules, with the 2026-11-16 extension:
+grey fabric M/stocked and processed fabric M or whole PCS/stocked, both with
 composition, finished SUIT/stocked, service nonstock/no rolls, same-dimension exact
 conversions and whole physical rolls. Fabric specification/conversion/variant
 references freeze type/unit/tracking even before stock; purchase lines/stock lots

@@ -63,15 +63,36 @@ try {
     const input=async(name,value)=>{await evaluate(`(()=>{const el=document.getElementsByName(${JSON.stringify(name)})[0];if(!el)throw Error('Missing input');el.value=${JSON.stringify(value)};el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`);await pause(50);};
     for(const kind of ['out','in']) {
         await open(kind);
+        assert.ok(await evaluate("getComputedStyle(document.body).fontFamily.includes('Inter')"), 'Compiled stylesheet must be loaded');
         if(kind==='out') {
             const vendor=await evaluate("document.querySelector('[name=vendor_party_role_id] option:nth-child(2)').value");
             await input('vendor_party_role_id',vendor);
             const cap=await evaluate("[...document.querySelector('[name=vendor_service_id]').options].find(o=>o.value&&!o.disabled).value");
             await input('vendor_service_id',cap);
-            assert.equal(await evaluate("document.querySelector('[name=agreed_unit_rate_pkr]').value"),'2.00000000');
+            assert.equal(await evaluate("document.querySelector('[name=agreed_unit_rate_pkr]').value"),'');
+            assert.ok(await evaluate("!document.querySelector('[name=agreed_unit_rate_pkr]').required"));
+            assert.ok(await evaluate("document.querySelector('[name=cut_piece_quantity]').closest('fieldset').disabled"));
+            await evaluate("document.querySelector('[name=cut_before_dispatch]').click()");
+            await pause(100);
+            assert.ok(await evaluate("!document.querySelector('[name=cut_piece_quantity]').closest('fieldset').disabled"));
+            await input('cut_piece_quantity','20');
+            assert.ok(await evaluate("document.querySelector('[name=cut_piece_quantity]').checkValidity()"));
+            await input('cut_retained_meters','100');
+            await input('agreed_unit_rate_pkr','7.25');
+            await input('document_date','2026-11-18');
+            assert.equal(await evaluate("document.querySelector('[name=agreed_unit_rate_pkr]').value"),'7.25');
             assert.ok(await evaluate("[...document.querySelector('[name=vendor_service_id]').options].filter(o=>o.value&&!o.disabled).length>0"));
         } else {
             assert.ok(await evaluate("document.querySelector('[name=next_vendor_party_role_id]').closest('fieldset').disabled"));
+            await input('return_unit_code','PCS');
+            assert.ok(await evaluate("!document.querySelector('[name=output_source_equivalent_quantity]').closest('fieldset').disabled"));
+            assert.equal(await evaluate("document.querySelector('[name=output_quantity]').step"),'1');
+            await input('output_quantity','12');
+            assert.ok(await evaluate("document.querySelector('[name=output_quantity]').checkValidity()"));
+            await input('disposition','rejected');
+            assert.equal(await evaluate("document.querySelector('[name=return_unit_code]').value"),'M');
+            assert.ok(await evaluate("document.querySelector('[name=actual_unit_rate_pkr]').closest('fieldset').disabled"));
+            await input('disposition','accepted');
             await input('destination','vendor');
             assert.ok(await evaluate("document.querySelector('[name=receiving_location_id]').closest('fieldset').disabled"));
             assert.ok(await evaluate("!document.querySelector('[name=next_vendor_party_role_id]').closest('fieldset').disabled"));
