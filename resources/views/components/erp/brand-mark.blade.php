@@ -1,3 +1,5 @@
-@props(['class' => 'size-10'])
+@props(['size' => 40, 'alt' => 'IB Fashion'])
 
-<span {{ $attributes->class(['grid place-items-center rounded-xl bg-brand text-lg font-bold text-white', $class]) }} aria-hidden="true">T</span>
+<img src="{{ asset('branding/ib-fashion-icon.png') }}" alt="{{ $alt }}"
+    width="{{ $size }}" height="{{ $size }}"
+    {{ $attributes->class(['shrink-0 rounded-lg object-contain']) }}>

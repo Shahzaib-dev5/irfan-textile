@@ -1,5 +1,9 @@
 # Changelog
 
+## IB Fashion branding (2026-11-19)
+
+Added the supplied company logo as a prepared full mark and monogram icon. The monogram appears in the browser favicon, navigation header, and sign-in screen. The full mark is embedded in transaction PDFs and print views through the shared document renderer. No database migration or transaction data change.
+
 ## 2026-11-16
 
 - Added optional old unpaid balance entry to Parties > Add party, with plain

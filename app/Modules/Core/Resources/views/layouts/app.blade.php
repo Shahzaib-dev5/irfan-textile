@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ asset('branding/ib-fashion-icon.png') }}">
     <script>try { if (localStorage.getItem('erpTheme') === 'dark') document.documentElement.classList.add('dark-mode'); if (window.matchMedia('(min-width: 1024px)').matches && localStorage.getItem('erpSidebarCollapsed') === 'true') document.documentElement.classList.add('sidebar-collapsed'); } catch (_) {}</script>
     <title>@yield('title', 'Textile ERP') · Textile ERP</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -13,8 +14,8 @@
         <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" @click="sidebarOpen = false"></div>
         <aside class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-line bg-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0" :class="[(sidebarOpen && 'translate-x-0'), (sidebarCollapsed && 'lg:hidden')]">
             <a href="{{ route('dashboard') }}" class="flex h-20 items-center gap-3 border-b border-line px-6">
-                <x-erp.brand-mark />
-                <span><span class="block text-sm font-semibold tracking-tight">Textile ERP</span><span class="block text-xs text-slate-500">Manufacturing & wholesale</span></span>
+                <x-erp.brand-mark :size="48" alt="" />
+                <span><span class="block text-sm font-semibold tracking-tight">IB FASHION</span><span class="block text-xs text-slate-500">Manufacturing & wholesale</span></span>
             </a>
             <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="Main navigation">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm {{ request()->routeIs('dashboard')?'bg-emerald-50 font-semibold text-brand':'font-medium text-slate-600 hover:bg-slate-50' }}">Dashboard</a>
@@ -45,7 +46,13 @@
         </aside>
         <div class="flex min-h-screen min-w-0 flex-1 flex-col">
             <header class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-white/95 px-4 backdrop-blur sm:px-7">
-                <div class="flex items-center gap-3"><button type="button" class="rounded-lg p-2 text-slate-600 hover:bg-slate-100" @click="toggleSidebar()" :aria-expanded="window.matchMedia('(min-width: 1024px)').matches ? !sidebarCollapsed : sidebarOpen" aria-label="Toggle navigation" title="Toggle sidebar"><svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" /></svg></button><span class="text-sm text-slate-500">@yield('breadcrumb', 'Workspace')</span></div>
+                <div class="flex min-w-0 items-center gap-3">
+                    <button type="button" class="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100" @click="toggleSidebar()" :aria-expanded="window.matchMedia('(min-width: 1024px)').matches ? !sidebarCollapsed : sidebarOpen" aria-label="Toggle navigation" title="Toggle sidebar"><svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+                    <a href="{{ route('dashboard') }}" aria-label="IB Fashion dashboard" class="shrink-0">
+                        <x-erp.brand-mark :size="36" alt="" />
+                    </a>
+                    <span class="truncate text-sm text-slate-500">@yield('breadcrumb', 'Workspace')</span>
+                </div>
                 <div class="flex items-center gap-2 sm:gap-4">
                     <button type="button" class="rounded-lg border border-line px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50" @click="toggleTheme()" :aria-pressed="darkMode" x-text="darkMode ? 'Light mode' : 'Dark mode'">Dark mode</button>
                     <span class="hidden text-xs text-slate-500 sm:inline">{{ now()->timezone('Asia/Karachi')->format('D, d M Y') }}</span>

@@ -254,7 +254,9 @@ class TransactionDocument
         $path = CompanySetting::where('setting_key', 'company.logo')->first()?->value_json['path'] ?? null;
         // Never load arbitrary local paths or external SVG/URLs from settings.
         if (! is_string($path) || ! preg_match('#^company/branding/[A-Za-z0-9._-]+$#D', $path) || ! Storage::disk('local')->exists($path)) {
-            return null;
+            $brandLogo = public_path('branding/ib-fashion-logo.png');
+
+            return is_file($brandLogo) ? 'data:image/png;base64,'.base64_encode(file_get_contents($brandLogo)) : null;
         }
         $bytes = Storage::disk('local')->get($path);
         if (strlen($bytes) > 2097152) {

@@ -15,7 +15,7 @@
         .brand-header td { vertical-align: middle; }
         .brand { width: 68%; }
         .brand-mark { display: inline-block; width: 48pt; height: 48pt; margin-right: 10pt; color: #fff; background: #176b58; text-align: center; line-height: 48pt; font-size: 16pt; font-weight: bold; vertical-align: middle; }
-        .logo { display: inline-block; width: 66pt; height: 54pt; margin-right: 10pt; object-fit: contain; vertical-align: middle; }
+        .logo { display: inline-block; width: 70pt; height: 70pt; margin-right: 10pt; object-fit: contain; vertical-align: middle; }
         .company { display: inline-block; max-width: 285pt; vertical-align: middle; }
         .eyebrow { margin-bottom: 3pt; color: #668078; font-size: 7pt; font-weight: bold; letter-spacing: 1pt; text-transform: uppercase; }
         .company-name { margin: 0; color: #173f35; font-size: 15pt; font-weight: bold; }

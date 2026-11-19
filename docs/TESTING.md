@@ -1,5 +1,9 @@
 # Testing and validation
 
+## IB Fashion branding (2026-11-19)
+
+`TransactionPdfLayoutTest`: 1 passed, 10 assertions. It checks that the prepared logo is embedded in the print HTML and that the PDF still renders a multi-page document. Blade view cache and PHP lint passed. Navbar and favicon assets were checked in templates; no browser visual test was run.
+
 ## New Party old unpaid balance (2026-11-16)
 
 Final focused regression: **28 tests / 257 assertions passed**, PHP 8.4.9,
